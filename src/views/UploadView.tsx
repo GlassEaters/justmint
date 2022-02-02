@@ -1,5 +1,12 @@
 import * as React from "react";
-import { Button, List, Upload } from 'antd';
+import {
+  Button,
+  Col,
+  List,
+  Row,
+  Statistic,
+  Upload,
+} from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 
 import {
@@ -239,7 +246,18 @@ export const UploadView: React.FC = (
   };
 
   return (
-    <div className="app stack" style={{ margin: 'auto' }}>
+    <div className="app stack arweave-upload" style={{ margin: 'auto' }}>
+      <Row>
+      <Col span={12}>
+      <Statistic title="Price" value={price ? price.div(LAMPORTS_PER_SOL).toString() : 0} />
+      </Col>
+
+      <Col span={12}>
+      <Statistic title="Balance" value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 0} />
+      </Col>
+      </Row>
+
+      <div>
       <Upload
         beforeUpload={asset => {
           setAssetList(assetList => [...assetList, asset]);
@@ -253,22 +271,15 @@ export const UploadView: React.FC = (
           });
         }}
         fileList={assetList}
+        className="select-file-upload"
       >
-        <Button icon={<UploadOutlined />}>select file</Button>
+        <Button icon={<UploadOutlined />}>
+          select file
+        </Button>
       </Upload>
+      </div>
 
-      {price && (
-        <div>
-          Price: {price.div(LAMPORTS_PER_SOL).toString()} SOL
-        </div>
-      )}
-
-      {balance && (
-        <div>
-          Bundlr balance: {balance.div(LAMPORTS_PER_SOL).toString()} SOL
-        </div>
-      )}
-
+      <div>
       <Button
         onClick={() => {
           const wrap = async () => {
@@ -282,6 +293,7 @@ export const UploadView: React.FC = (
       >
         Upload
       </Button>
+      </div>
 
       {uploaded.length !== 0 && <List
         itemLayout="horizontal"
@@ -291,7 +303,6 @@ export const UploadView: React.FC = (
             <List.Item.Meta
               title={(
                 <div>
-                  <span className="field-title">Name{"\u00A0"}</span>
                   {key.name}
                 </div>
               )}
