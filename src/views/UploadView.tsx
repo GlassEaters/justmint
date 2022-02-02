@@ -10,11 +10,21 @@ import WebBundlr from '@bundlr-network/client/build/web';
 import BigNumber from 'bignumber.js';
 
 import {
+  decLoading,
+  incLoading,
+  useLoading,
+} from '../components/Loader';
+import {
+  useConnection,
   useConnectionConfig,
 } from '../contexts/ConnectionContext';
 import {
   notify,
+  shortenAddress,
 } from '../utils/common';
+import {
+  explorerLinkFor,
+} from '../utils/transactions';
 
 export type BundlrContextState = {
   bundlr: WebBundlr | null,
@@ -82,12 +92,13 @@ export const UploadView: React.FC = (
 ) => {
   // contexts
   const wallet = useWallet();
+  const connection = useConnection();
   const { bundlr } = useBundlr();
 
   // user inputs
   // Array<RcFile>
   const [assetList, setAssetList] = React.useState<Array<any>>([]);
-  const [uploading, setUploading] = React.useState<boolean>(false);
+  const { loading, setLoading } = useLoading();
 
   // async useEffect
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
@@ -109,7 +120,10 @@ export const UploadView: React.FC = (
 
   const getPrice = async () => {
     if (!bundlr) return;
-    if (assetList.length === 0) return;
+    if (assetList.length === 0) {
+      setPrice(null);
+      return;
+    }
     try {
       const price = await bundlr.utils.getPrice(
         'solana', assetList.reduce((c, asset) => c + asset.size, 0));
@@ -129,10 +143,41 @@ export const UploadView: React.FC = (
   const bundlrUpload = async () => {
     if (balance.lt(price)) {
       try {
-        const res = await bundlr.fund(price.minus(balance));
+        const amount = price.minus(balance);
+        const multiplier = 1.1; // adjusted up to avoid spurious failures...
+
+        const c = bundlr.utils.currencyConfig;
+        const to = await bundlr.utils.getBundlerAddress(bundlr.utils.currency);
+        const baseFee = await c.getFee(amount, to)
+        const fee = (baseFee.multipliedBy(multiplier)).toFixed(0).toString();
+        const tx = await c.createTx(amount, to, fee.toString());
+        tx.txId = await c.sendTx(tx.tx);
+
         notify({
-          message: `Funded ${res.target}`,
-          description: `Transaction ID ${res.id}`,
+          message: `Funded ${shortenAddress(to)}. Waiting confirmation`,
+          description: (
+            <a
+              href={explorerLinkFor(tx.txId, connection)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View on explorer
+            </a>
+          ),
+        })
+
+        await connection.confirmTransaction(tx.txId, 'finalized');
+
+        const res = await bundlr.utils.api.post(
+            `/account/balance/${bundlr.utils.currency}`, { tx_id: tx.txId });
+
+        if (res.status != 200) {
+          const context = 'Posting transaction information to the bundlr';
+          throw new Error(`HTTP Error: ${context}: ${res.status} ${res.statusText.length == 0 ? res.data : res.statusText}`);
+        }
+
+        notify({
+          message: `Posted funding transaction`,
         })
       } catch (err) {
         console.log(err);
@@ -140,6 +185,7 @@ export const UploadView: React.FC = (
           message: `Failed to fund bundlr wallet`,
           description: err.message,
         })
+        return;
       }
     }
 
@@ -147,7 +193,7 @@ export const UploadView: React.FC = (
       try {
         const res = await bundlr.uploader.upload(
           await asset.arrayBuffer(), [{ name: "Content-Type", value: asset.type }]);
-        if (res.status !== 200) {
+        if (res.status !== 200 && res.status != 201) {
           throw new Error(`Bad status code ${res.status}`);
         }
         notify({
@@ -170,6 +216,9 @@ export const UploadView: React.FC = (
         })
       }
     }
+
+    // refresh
+    await getBalance();
   };
 
   return (
@@ -205,15 +254,16 @@ export const UploadView: React.FC = (
 
       <Button
         onClick={() => {
-          setUploading(true);
-          bundlrUpload();
-          setUploading(false);
+          const wrap = async () => {
+            setLoading(incLoading);
+            await bundlrUpload();
+            setLoading(decLoading);
+          };
+          wrap();
         }}
         disabled={assetList.length === 0 || !bundlr}
-        loading={uploading}
-        style={{ marginTop: 16 }}
       >
-        {uploading ? 'Uploading' : 'Start Upload'}
+        Upload
       </Button>
     </div>
   );
