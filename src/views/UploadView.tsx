@@ -7,6 +7,7 @@ import {
 } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WebBundlr from '@bundlr-network/client/build/web';
+import BigNumber from 'bignumber.js';
 
 import {
   useConnectionConfig,
@@ -89,7 +90,22 @@ export const UploadView: React.FC = (
   const [uploading, setUploading] = React.useState<boolean>(false);
 
   // async useEffect
-  const [price, setPrice] = React.useState<string>('');
+  const [balance, setBalance] = React.useState<BigNumber | null>(null);
+  const [price, setPrice] = React.useState<BigNumber | null>(null);
+
+  const getBalance = async () => {
+    if (!bundlr) return;
+    try {
+      const balance = await bundlr.getBalance(bundlr.address);
+      setBalance(balance);
+    } catch (err) {
+      console.log(err);
+      notify({
+        message: 'Failed to get bundlr balance',
+        description: err.message,
+      })
+    }
+  };
 
   const getPrice = async () => {
     if (!bundlr) return;
@@ -97,7 +113,7 @@ export const UploadView: React.FC = (
     try {
       const price = await bundlr.utils.getPrice(
         'solana', assetList.reduce((c, asset) => c + asset.size, 0));
-      setPrice(price.div(LAMPORTS_PER_SOL).toString());
+      setPrice(price);
     } catch (err) {
       console.log(err);
       notify({
@@ -107,11 +123,26 @@ export const UploadView: React.FC = (
     }
   };
 
+  React.useEffect(() => { getBalance() }, [bundlr]);
   React.useEffect(() => { getPrice() }, [bundlr, assetList]);
 
   const bundlrUpload = async () => {
-    if (!bundlr || !wallet) return;
-    setUploading(true);
+    if (balance.lt(price)) {
+      try {
+        const res = await bundlr.fund(price.minus(balance));
+        notify({
+          message: `Funded ${res.target}`,
+          description: `Transaction ID ${res.id}`,
+        })
+      } catch (err) {
+        console.log(err);
+        notify({
+          message: `Failed to fund bundlr wallet`,
+          description: err.message,
+        })
+      }
+    }
+
     for (const asset of assetList) {
       try {
         const res = await bundlr.uploader.upload(
@@ -139,7 +170,6 @@ export const UploadView: React.FC = (
         })
       }
     }
-    setUploading(false);
   };
 
   return (
@@ -163,14 +193,23 @@ export const UploadView: React.FC = (
 
       {price && (
         <div>
-          Price: {price} SOL
+          Price: {price.div(LAMPORTS_PER_SOL).toString()} SOL
+        </div>
+      )}
+
+      {balance && (
+        <div>
+          Bundlr balance: {balance.div(LAMPORTS_PER_SOL).toString()} SOL
         </div>
       )}
 
       <Button
-        type="primary"
-        onClick={bundlrUpload}
-        disabled={assetList.length === 0}
+        onClick={() => {
+          setUploading(true);
+          bundlrUpload();
+          setUploading(false);
+        }}
+        disabled={assetList.length === 0 || !bundlr}
         loading={uploading}
         style={{ marginTop: 16 }}
       >
