@@ -7,8 +7,10 @@ module.exports = {
   resolve: {
     extensions: [".js", ".jsx", ".ts", ".tsx"],
     fallback: {
-      "crypto": false,
-      "buffer": require.resolve('buffer'),
+      'assert': require.resolve('assert'),
+      'buffer': require.resolve('buffer'),
+      'crypto': require.resolve('crypto-browserify'),
+      'stream': require.resolve('stream-browserify'),
     },
   },
   context: resolve(__dirname, "../../src"),
