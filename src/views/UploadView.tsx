@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Button, Upload } from 'antd';
+import { Button, List, Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 
 import {
@@ -88,6 +88,11 @@ export const useBundlr = () => {
   return context;
 };
 
+type UploadMeta = {
+  arweave: string | null,
+  name: string,
+};
+
 export const UploadView: React.FC = (
 ) => {
   // contexts
@@ -103,6 +108,7 @@ export const UploadView: React.FC = (
   // async useEffect
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
+  const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
 
   const getBalance = async () => {
     if (!bundlr) return;
@@ -189,6 +195,7 @@ export const UploadView: React.FC = (
       }
     }
 
+    const uploaded: Array<UploadMeta | null> = [];
     for (const asset of assetList) {
       try {
         const res = await bundlr.uploader.upload(
@@ -208,14 +215,24 @@ export const UploadView: React.FC = (
             </a>
           ),
         })
+        uploaded.push({
+          arweave: res.data.id,
+          name: asset.name,
+        });
       } catch (err) {
         console.log(err);
         notify({
           message: `Failed to upload ${asset.name} to bundlr network`,
           description: err.message,
         })
+        uploaded.push({
+          arweave: null,
+          name: asset.name,
+        });
       }
     }
+
+    setUploaded(uploaded);
 
     // refresh
     await getBalance();
@@ -265,6 +282,35 @@ export const UploadView: React.FC = (
       >
         Upload
       </Button>
+
+      {uploaded.length !== 0 && <List
+        itemLayout="horizontal"
+        dataSource={uploaded}
+        renderItem={(key: UploadMeta | null) => (
+          <List.Item>
+            <List.Item.Meta
+              title={(
+                <div>
+                  <span className="field-title">Name{"\u00A0"}</span>
+                  {key.name}
+                </div>
+              )}
+              description={key.arweave && (
+                <div>
+                  <span className="field-title">Arweave{"\u00A0"}</span>
+                  <a
+                    href={`https://arweave.net/${key.arweave}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {key.arweave}
+                  </a>
+                </div>
+              )}
+            />
+          </List.Item>
+        )}
+      />}
     </div>
   );
 }
