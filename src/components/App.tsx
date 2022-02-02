@@ -9,23 +9,27 @@ import { SPLTokenListProvider } from '../contexts/tokenList';
 import { WalletProvider } from '../contexts/WalletContext';
 import { AppLayout } from './Layout';
 
+import { BundlrProvider, UploadView } from '../views/UploadView';
+
 export const App = () => {
   return (
     <BrowserRouter>
       <ConnectionProvider>
-      <WalletProvider>
       <SPLTokenListProvider>
       <CoingeckoProvider>
       <LoaderProvider>
+      <WalletProvider>
+      <BundlrProvider>
         <AppLayout>
           <Switch>
-            <Route exact path="/" component={null} />
+            <Route exact path="/" component={UploadView} />
           </Switch>
         </AppLayout>
+      </BundlrProvider>
+      </WalletProvider>
       </LoaderProvider>
       </CoingeckoProvider>
       </SPLTokenListProvider>
-      </WalletProvider>
       </ConnectionProvider>
     </BrowserRouter>
   );
