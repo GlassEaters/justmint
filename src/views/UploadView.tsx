@@ -58,7 +58,7 @@ export const BundlrProvider = ({ children }: { children: React.ReactNode }) => {
     setBundlr(bundlr);
   };
 
-  React.useEffect(() => { initBundlr() }, [wallet]);
+  React.useEffect(() => { initBundlr() }, [wallet, endpoint]);
 
   return (
     <BundlrContext.Provider
