@@ -7,6 +7,9 @@ module.exports = {
   resolve: {
     extensions: [".js", ".jsx", ".ts", ".tsx"],
     fallback: {
+      'fs': false,
+      'path': false,
+      'zlib': false,
       'assert': require.resolve('assert'),
       'buffer': require.resolve('buffer'),
       'crypto': require.resolve('crypto-browserify'),

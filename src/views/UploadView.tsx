@@ -26,7 +26,11 @@ import {
 } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WebBundlr from '@bundlr-network/client/build/web';
+import BundlrTransaction from '@bundlr-network/client/build/common/transaction';
+import DataItem from 'arbundles/src/DataItem';
+import { createData } from 'arbundles/src/ar-data-create';
 import BigNumber from 'bignumber.js';
+import Mime from 'mime';
 
 import { useWindowDimensions } from '../components/AppBar';
 import { CollapsePanel } from '../components/CollapsePanel';
@@ -326,6 +330,103 @@ const EditableTable = (
   );
 };
 
+
+/**
+ * Tags to include with every individual transaction.
+ */
+const BASE_TAGS = [{ name: 'App-Name', value: 'Just Mint' }];
+
+const contentTypeTags = {
+  json: { name: 'Content-Type', value: 'application/json' },
+  'arweave-manifest': {
+    name: 'Content-Type',
+    value: 'application/x.arweave-manifest+json',
+  },
+};
+
+const manifestTags = [...BASE_TAGS, contentTypeTags['json']];
+
+const arweavePathManifestTags = [
+  ...BASE_TAGS,
+  contentTypeTags['arweave-manifest'],
+];
+
+/**
+ * The Arweave Path Manifest object for a given asset file pair.
+ * https://github.com/ArweaveTeam/arweave/blob/master/doc/path-manifest-schema.md
+ */
+type ArweavePathManifest = {
+  manifest: 'arweave/paths';
+  version: '0.1.0';
+  paths: {
+    [key: string]: {
+      id: string; // arweave transaction id
+    };
+    'metadata.json': {
+      id: string; // arweave transaction id
+    };
+  };
+  index: {
+    path: 'metadata.json';
+  };
+};
+
+/**
+ * Create the Arweave Path Manifest from the asset image / manifest
+ * pair txIds, helps Arweave Gateways find the files.
+ * Instructs arweave gateways to serve metadata.json by default
+ * when accessing the transaction.
+ * See:
+ * - https://github.com/ArweaveTeam/arweave/blob/master/doc/path-manifest-schema.md
+ * - https://github.com/metaplex-foundation/metaplex/pull/859#pullrequestreview-805914075
+ */
+function createArweavePathManifest(
+  // TODO: diffentiate outside of mediaType
+  images: {
+    imageTxId: string,
+    mediaType: string,
+  }[],
+  manifestTxId: string,
+): ArweavePathManifest {
+  const arweavePathManifest: ArweavePathManifest = {
+    manifest: 'arweave/paths',
+    version: '0.1.0',
+    paths: {
+      ...images.reduce((a, { imageTxId, mediaType }) => ({
+        ...a,
+        [`image${mediaType}`]: {
+          id: imageTxId,
+        },
+      }), {}),
+      'metadata.json': {
+        id: manifestTxId,
+      },
+    },
+    index: {
+      path: 'metadata.json',
+    },
+  };
+
+  return arweavePathManifest;
+}
+
+// The size in bytes of a dummy Arweave Path Manifest.
+// Used to account for the size of a file pair manifest, in the computation
+// of a bundle range.
+const dummyAreaveManifestByteSize = (() => {
+  const dummyAreaveManifest = createArweavePathManifest(
+    [
+      {
+        imageTxId: 'akBSbAEWTf6xDDnrG_BHKaxXjxoGuBnuhMnoYKUCDZo',
+        mediaType: '.png',
+      }
+    ],
+    'akBSbAEWTf6xDDnrG_BHKaxXjxoGuBnuhMnoYKUCDZo',
+  );
+  return Buffer.byteLength(JSON.stringify(dummyAreaveManifest));
+})();
+
+
 export const UploadView: React.FC = (
 ) => {
   // contexts
@@ -349,18 +450,25 @@ export const UploadView: React.FC = (
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
 
-  const formatManifest = () => {
-    return JSON.stringify({
+  const formatManifest = (
+    assetDataItems: Array<DataItem>,
+    category: string,
+  ) => {
+    const assetLinks = assetDataItems.map(
+      a => `https://arweave.net/${a.id}`
+    );
+
+    return {
       name,
       description,
-      image: '',
+      image: assetLinks[0],
       external_url: externalUrl,
       attributes,
       properties: {
-        files: [],
-        category: '',
+        files: assetLinks.slice(1),
+        category,
       },
-    });
+    };
   };
 
   const getBalance = async () => {
@@ -400,12 +508,69 @@ export const UploadView: React.FC = (
   React.useEffect(() => { getPrice() }, [bundlr, assetList]);
 
   const bundlrUpload = async () => {
+    if (assetList.length === 0) {
+      throw new Error('Must upload at least 1 asset');
+    }
+    const c = bundlr.utils.currencyConfig;
+    const bundlrSigner = await c.getSigner();
+    const assetDataItems = await Promise.all(assetList.map(async (asset) => {
+      return createData(
+        await asset.arrayBuffer(),
+        bundlrSigner,
+        { tags: [{ name: "Content-Type", value: asset.type }] },
+      );
+    }));
+
+    // TODO: manual signAll?
+    for (const dataItem of assetDataItems) {
+      await dataItem.sign(bundlrSigner);
+    }
+
+    const manifest = formatManifest(assetDataItems, assetList[0].type);
+    const manifestString = JSON.stringify(manifest);
+    console.log('manifest', manifest);
+
+    const manifestDataItem = bundlr.createTransaction(
+      JSON.stringify(manifest), { tags: manifestTags });
+
+    await (manifestDataItem as BundlrTransaction).sign();
+
+    const arweavePathManifest = createArweavePathManifest(
+      assetDataItems.map((assetDataItem, idx) => ({
+        imageTxId: assetDataItem.id,
+        mediaType: `.${Mime.getExtension(assetList[idx].type)}`,
+      })),
+      manifestDataItem.id,
+    );
+
+    const arweavePathManifestDataItem = bundlr.createTransaction(
+      JSON.stringify(arweavePathManifest),
+      { tags: arweavePathManifestTags },
+    );
+
+    await (arweavePathManifestDataItem as BundlrTransaction).sign();
+
+    const dataItems = [
+      ...assetDataItems,
+      manifestDataItem,
+      arweavePathManifestDataItem,
+    ];
+
+    const bytes = (dataItems as BundlrTransaction[]).reduce(
+      (c, d) => c + d.data.length,
+      0,
+    );
+
+    const price = await bundlr.utils.getPrice('solana', bytes);
+    notify({
+      message: `Bundlr Price ${price.div(LAMPORTS_PER_SOL).toString()}`,
+    });
+
     if (balance.lt(price)) {
       try {
         const amount = price.minus(balance);
         const multiplier = 1.1; // adjusted up to avoid spurious failures...
 
-        const c = bundlr.utils.currencyConfig;
         const to = await bundlr.utils.getBundlerAddress(bundlr.utils.currency);
         const baseFee = await c.getFee(amount, to)
         const fee = (baseFee.multipliedBy(multiplier)).toFixed(0).toString();
@@ -449,15 +614,24 @@ export const UploadView: React.FC = (
     }
 
     const uploaded: Array<UploadMeta | null> = [];
-    for (const asset of assetList) {
+    for (let idx = 0; idx < dataItems.length; ++idx) {
+      const dataItem = dataItems[idx];
+      let name;
+      if (idx < assetList.length) {
+        name = assetList[idx].name;
+      } else if (idx == assetList.length) {
+        name = 'metadata.json';
+      } else {
+        name = 'arweave-manifest';
+      };
       try {
-        const res = await bundlr.uploader.upload(
-          await asset.arrayBuffer(), [{ name: "Content-Type", value: asset.type }]);
+        const res = await bundlr.uploader.dataItemUploader(
+          dataItem as BundlrTransaction);
         if (res.status !== 200 && res.status != 201) {
           throw new Error(`Bad status code ${res.status}`);
         }
         notify({
-          message: `Uploaded ${asset.name} to bundlr network`,
+          message: `Uploaded ${name} to bundlr network`,
           description: (
             <a
               href={`https://arweave.net/${res.data.id}`}
@@ -470,17 +644,17 @@ export const UploadView: React.FC = (
         })
         uploaded.push({
           arweave: res.data.id,
-          name: asset.name,
+          name: name,
         });
       } catch (err) {
         console.log(err);
         notify({
-          message: `Failed to upload ${asset.name} to bundlr network`,
+          message: `Failed to upload ${name} to bundlr network`,
           description: err.message,
         })
         uploaded.push({
           arweave: null,
-          name: asset.name,
+          name: name,
         });
       }
 
@@ -503,7 +677,7 @@ export const UploadView: React.FC = (
     >
       <Row>
       <Col span={12}>
-      <Statistic title="Price" value={price ? price.div(LAMPORTS_PER_SOL).toString() : 0} />
+      <Statistic title="Price Est." value={price ? price.div(LAMPORTS_PER_SOL).toString() : 0} />
       </Col>
 
       <Col span={12}>
@@ -595,7 +769,15 @@ export const UploadView: React.FC = (
         onClick={() => {
           const wrap = async () => {
             setLoading(incLoading);
-            await bundlrUpload();
+            try {
+              await bundlrUpload();
+            } catch (err) {
+              console.log(err);
+              notify({
+                message: `Bundlr upload failed`,
+                description: err.message,
+              })
+            }
             setLoading(decLoading);
           };
           wrap();
