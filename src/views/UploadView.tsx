@@ -451,13 +451,9 @@ export const UploadView: React.FC = (
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
 
   const formatManifest = (
-    assetDataItems: Array<DataItem>,
+    assetLinks: Array<string>,
     category: string,
   ) => {
-    const assetLinks = assetDataItems.map(
-      a => `https://arweave.net/${a.id}`
-    );
-
     return {
       name,
       description,
@@ -487,20 +483,21 @@ export const UploadView: React.FC = (
 
   const getPrice = async () => {
     if (!bundlr) return;
-    if (assetList.length === 0) {
-      setPrice(null);
-      return;
-    }
     try {
-      const price = await bundlr.utils.getPrice(
-        'solana', assetList.reduce((c, asset) => c + asset.size, 0));
+      const lengths = [
+        ...assetList.map(asset => asset.size),
+        JSON.stringify(formatManifest(
+          assetList.map(() => " ".repeat(50)), // fluff
+          " ".repeat(50), // fluff
+        )).length,
+        dummyAreaveManifestByteSize,
+      ];
+      const price = (await Promise.all(lengths.map(
+        l => bundlr.utils.getPrice('solana', l)
+      ))).reduce((c, d) => c.plus(d), new BigNumber(0));
       setPrice(price);
     } catch (err) {
-      console.log(err);
-      notify({
-        message: 'Failed to get bundlr price',
-        description: err.message,
-      })
+      console.log('Failed to get bundlr price', err.message);
     }
   };
 
@@ -526,9 +523,12 @@ export const UploadView: React.FC = (
       await dataItem.sign(bundlrSigner);
     }
 
-    const manifest = formatManifest(assetDataItems, assetList[0].type);
-    const manifestString = JSON.stringify(manifest);
-    console.log('manifest', manifest);
+    const manifest = formatManifest(
+      assetDataItems.map(
+        a => `https://arweave.net/${a.id}`
+      ),
+      Mime.getType(assetList[0].type),
+    );
 
     const manifestDataItem = bundlr.createTransaction(
       JSON.stringify(manifest), { tags: manifestTags });
@@ -556,12 +556,9 @@ export const UploadView: React.FC = (
       arweavePathManifestDataItem,
     ];
 
-    const bytes = (dataItems as BundlrTransaction[]).reduce(
-      (c, d) => c + d.data.length,
-      0,
-    );
-
-    const price = await bundlr.utils.getPrice('solana', bytes);
+    const price = (await Promise.all(dataItems.map(
+      d => bundlr.utils.getPrice('solana', d.data.length)
+    ))).reduce((c, d) => c.plus(d), new BigNumber(0));
     notify({
       message: `Bundlr Price ${price.div(LAMPORTS_PER_SOL).toString()}`,
     });
