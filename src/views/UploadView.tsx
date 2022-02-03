@@ -22,14 +22,36 @@ import {
 } from '@ant-design/icons';
 
 import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  TransactionInstruction,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
+import {
+  MintLayout,
+  Token,
+  TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 import { useWallet } from '@solana/wallet-adapter-react';
+import {
+  CreateMasterEdition,
+  CreateMetadata,
+  Creator,
+  MasterEdition,
+  Metadata,
+  MetadataDataData,
+  Uses,
+} from '@metaplex-foundation/mpl-token-metadata';
+
 import WebBundlr from '@bundlr-network/client/build/web';
 import BundlrTransaction from '@bundlr-network/client/build/common/transaction';
 import DataItem from 'arbundles/src/DataItem';
 import { createData } from 'arbundles/src/ar-data-create';
+
 import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import Mime from 'mime';
 
 import { useWindowDimensions } from '../components/AppBar';
@@ -40,6 +62,8 @@ import {
   useLoading,
 } from '../components/Loader';
 import {
+  explorerLinkCForAddress,
+  sendTransactionWithRetry,
   useConnection,
   useConnectionConfig,
 } from '../contexts/ConnectionContext';
@@ -48,6 +72,9 @@ import {
   shortenAddress,
   useLocalStorageState,
 } from '../utils/common';
+import {
+  SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+} from '../utils/ids';
 import {
   explorerLinkFor,
 } from '../utils/transactions';
@@ -426,11 +453,117 @@ const dummyAreaveManifestByteSize = (() => {
   return Buffer.byteLength(JSON.stringify(dummyAreaveManifest));
 })();
 
+export const mintNFTInstructions = async (
+  connection: Connection,
+  walletKey: PublicKey,
+  metadataData: MetadataDataData,
+  maxSupply: BN,
+): Promise<{ mint: Keypair, instructions: Array<TransactionInstruction> }> => {
+  // Retrieve metadata
+
+  // Allocate memory for the account
+  const mintRent = await connection.getMinimumBalanceForRentExemption(
+    MintLayout.span,
+  );
+
+  // Generate a mint
+  const mint = Keypair.generate();
+  const instructions: TransactionInstruction[] = [];
+
+  instructions.push(
+    SystemProgram.createAccount({
+      fromPubkey: walletKey,
+      newAccountPubkey: mint.publicKey,
+      lamports: mintRent,
+      space: MintLayout.span,
+      programId: TOKEN_PROGRAM_ID,
+    }),
+  );
+  instructions.push(
+    Token.createInitMintInstruction(
+      TOKEN_PROGRAM_ID,
+      mint.publicKey,
+      0,
+      walletKey,
+      walletKey,
+    ),
+  );
+
+  const userTokenAccoutAddress = await Token.getAssociatedTokenAddress(
+    SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint.publicKey,
+    walletKey,
+    true,
+  );
+  instructions.push(
+    Token.createAssociatedTokenAccountInstruction(
+      SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      mint.publicKey,
+      userTokenAccoutAddress,
+      walletKey,
+      walletKey,
+    ),
+  );
+
+  // Create metadata
+  const metadataAccount = await Metadata.getPDA(mint.publicKey);
+  instructions.push(
+    ...new CreateMetadata(
+      {
+        feePayer: walletKey,
+      },
+      {
+        metadata: metadataAccount,
+        metadataData,
+        updateAuthority: walletKey,
+        mint: mint.publicKey,
+        mintAuthority: walletKey,
+      }
+    ).instructions,
+  );
+
+  instructions.push(
+    Token.createMintToInstruction(
+      TOKEN_PROGRAM_ID,
+      mint.publicKey,
+      userTokenAccoutAddress,
+      walletKey,
+      [],
+      1,
+    ),
+  );
+
+  // Create master edition
+  const editionAccount = await MasterEdition.getPDA(mint.publicKey);
+  instructions.push(
+    ...new CreateMasterEdition(
+      {
+        feePayer: walletKey,
+      },
+      {
+        edition: editionAccount,
+        metadata: metadataAccount,
+        updateAuthority: walletKey,
+        mint: mint.publicKey,
+        mintAuthority: walletKey,
+        maxSupply,
+      }
+    ).instructions,
+  );
+
+  return {
+    mint,
+    instructions,
+  }
+};
 
 export const UploadView: React.FC = (
 ) => {
   // contexts
   const connection = useConnection();
+  const wallet = useWallet();
   const { bundlr } = useBundlr();
 
   // user inputs
@@ -656,6 +789,45 @@ export const UploadView: React.FC = (
       }
 
       setUploaded(uploaded);
+    }
+
+    const metadataLink = uploaded[assetList.length].arweave;
+    const { instructions, mint } = await mintNFTInstructions(
+      connection,
+      wallet.publicKey,
+      new MetadataDataData({
+        name: name,
+        symbol: '',
+        uri: metadataLink,
+        sellerFeeBasisPoints: 0,
+        creators: [
+          new Creator({
+            address: wallet.publicKey.toBase58(),
+            verified: true,
+            share: 100,
+          })
+        ],
+      }),
+      new BN(0),
+    );
+
+    const result = await sendTransactionWithRetry(
+      connection,
+      wallet,
+      instructions,
+      [mint],
+    );
+
+    console.log(result);
+    if (typeof result === "string") {
+      throw new Error(result);
+    } else {
+      notify({
+        message: "Mint succeeded",
+        description: explorerLinkCForAddress(
+          mint.publicKey.toBase58(), connection),
+      });
+      await connection.confirmTransaction(result.txid, 'finalized');
     }
 
     // refresh
