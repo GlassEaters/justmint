@@ -104,14 +104,13 @@ type UploadMeta = {
 export const UploadView: React.FC = (
 ) => {
   // contexts
-  const wallet = useWallet();
   const connection = useConnection();
   const { bundlr } = useBundlr();
 
   // user inputs
   // Array<RcFile>
   const [assetList, setAssetList] = React.useState<Array<any>>([]);
-  const { loading, setLoading } = useLoading();
+  const { setLoading } = useLoading();
 
   // async useEffect
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
