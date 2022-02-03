@@ -13,8 +13,10 @@ import {
 } from 'antd';
 import { FormInstance } from 'antd/lib/form';
 import {
+  CheckOutlined,
+  CloseOutlined,
   DeleteOutlined,
-  MinusCircleOutlined,
+  EditOutlined,
   PlusOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
@@ -114,186 +116,183 @@ type UploadMeta = {
 };
 
 
-const EditableContext = React.createContext<FormInstance<any> | null>(null);
-
 interface Item {
   key: string;
   trait_type: string;
   value: string;
 }
 
-interface EditableRowProps {
-  index: number;
-}
-
-const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
-  const [form] = Form.useForm();
-  return (
-    <Form form={form} component={false}>
-      <EditableContext.Provider value={form}>
-        <tr {...props} />
-      </EditableContext.Provider>
-    </Form>
-  );
-};
-
-interface EditableCellProps {
-  title: React.ReactNode;
-  editable: boolean;
-  children: React.ReactNode;
-  dataIndex: keyof Item;
+interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
+  editing: boolean;
+  dataIndex: string;
+  title: any;
   record: Item;
-  handleSave: (record: Item) => void;
+  index: number;
+  children: React.ReactNode;
 }
 
 const EditableCell: React.FC<EditableCellProps> = ({
-  title,
-  editable,
-  children,
+  editing,
   dataIndex,
+  title,
   record,
-  handleSave,
+  index,
+  children,
   ...restProps
 }) => {
-  const [editing, setEditing] = React.useState(false);
-  const inputRef = React.useRef<Input>(null);
-  const form = React.useContext(EditableContext)!;
-
-  React.useEffect(() => {
-    if (editing) {
-      inputRef.current!.focus();
-    }
-  }, [editing]);
-
-  const toggleEdit = () => {
-    setEditing(!editing);
-    form.setFieldsValue({ [dataIndex]: record[dataIndex] });
-  };
-
-  const save = async () => {
-    try {
-      const values = await form.validateFields();
-
-      toggleEdit();
-      handleSave({ ...record, ...values });
-    } catch (errInfo) {
-      console.log('Save failed:', errInfo);
-    }
-  };
-
-  let childNode = children;
-
-  if (editable) {
-    childNode = editing ? (
-      <Form.Item
-        style={{ margin: 0 }}
-        name={dataIndex}
-        rules={[
-          {
-            required: true,
-            message: `${title} is required.`,
-          },
-        ]}
-      >
-        <Input ref={inputRef} onPressEnter={save} onBlur={save} />
-      </Form.Item>
-    ) : (
-      <div
-        className="editable-cell-value-wrap"
-        style={{ height: '100%', width: '100%', display: 'inline-table' }}
-        onClick={toggleEdit}
-      >
-        {children}
-      </div>
-    );
-  }
-
-  return <td {...restProps} style={{ height: '1px' }}>{childNode}</td>;
+  return (
+    <td {...restProps}>
+      {editing ? (
+        <Form.Item
+          name={dataIndex}
+          style={{ margin: 0 }}
+          rules={[
+            {
+              required: true,
+              message: `Please Input ${title}!`,
+            },
+          ]}
+        >
+          <Input.TextArea autoSize />
+        </Form.Item>
+      ) : (
+        children
+      )}
+    </td>
+  );
 };
 
-interface DataType {
-  key: React.Key;
-  trait_type: string;
-  value: string;
-}
+const EditableTable = (
+  { data, setData }: {
+    data: Array<Item>,
+    setData: React.Dispatch<React.SetStateAction<Array<Item>>>,
+  },
+) => {
+  const [form] = Form.useForm();
+  const [counter, setCounter] = React.useState(0);
+  const [editingKey, setEditingKey] = React.useState('');
 
-const EditableTable = () => {
-  const newRow: DataType = {
-    key: 0,
-    trait_type: '',
-    value: '',
+  const isEditing = (record: Item) => record.key === editingKey;
+  const addRecord = { trait_type: '', value: '', key: '' };
+
+  const edit = (record: Partial<Item> & { key: React.Key }) => {
+    form.setFieldsValue({ trait_type: '', value: '', ...record });
+    setEditingKey(record.key);
   };
 
-  // row 0 is special
-  const [tableState, setTableState] = React.useState({
-    dataSource: [],
-    zeroSource: newRow,
-    counter: 1,
-  });
-
-  const handleDelete = (key: React.Key) => {
-    const dataSource = [...tableState.dataSource];
-    setTableState({
-      ...tableState,
-      dataSource: dataSource.filter(item => item.key !== key),
-    });
+  const cancel = () => {
+    setEditingKey('');
   };
 
-  const handleAdd = (row: DataType) => {
-    const { counter, dataSource, zeroSource } = tableState;
-    setTableState({
-      dataSource: [...dataSource, { ...row, key: counter }],
-      zeroSource: newRow,
-      counter: counter + 1,
-    });
-  };
+  const save = async (key: React.Key) => {
+    try {
+      const row = (await form.validateFields()) as Item;
 
-  const handleSave = (row: DataType) => {
-    if (row.key === 0) {
-      handleAdd(row);
-      return;
+      const newData = [...data];
+      const index = newData.findIndex(item => key === item.key);
+      if (index > -1) {
+        const item = newData[index];
+        newData.splice(index, 1, {
+          ...item,
+          ...row,
+        });
+        setData(newData);
+        setEditingKey('');
+      } else {
+        console.log(row);
+        row.key = key.toString();
+        console.log(row);
+        newData.push(row);
+        setData(newData);
+        setEditingKey('');
+      }
+    } catch (errInfo) {
+      console.log('Validate Failed:', errInfo);
     }
-    const newData = [...tableState.dataSource];
-    const index = newData.findIndex(item => row.key === item.key);
-    const item = newData[index];
-    newData.splice(index, 1, {
-      ...item,
-      ...row,
-    });
-    setTableState({ ...tableState, dataSource: newData });
   };
 
-  const components = {
-    body: {
-      row: EditableRow,
-      cell: EditableCell,
-    },
+  const remove = (record: Partial<Item> & { key: React.Key }) => {
+    const newData = [...data];
+    setData(newData.filter(item => item.key !== record.key));
   };
 
   const columns = [
     {
-      title: '',
-      dataIndex: 'operation',
-      width: '5%',
-      render: (_: any, record: { key: React.Key }) =>
-        record.key !== 0 ? (
-          <Typography.Link onClick={() => handleDelete(record.key)}>
-            <DeleteOutlined />
-          </Typography.Link>
-        ) : (
-          <PlusOutlined />
-        ),
-    },
-    {
-      title: 'trait_type',
+      title: 'Trait Type',
       dataIndex: 'trait_type',
       width: '30%',
       editable: true,
     },
     {
-      title: 'value',
+      title: 'Value',
       dataIndex: 'value',
       editable: true,
+    },
+    {
+      title: 'Action',
+      dataIndex: 'Action',
+      width: '5%',
+      render: (_: any, record: Item) => {
+        // special
+        console.log(record);
+        if (record.key === '') {
+          return (
+            <span>
+              <Typography.Link
+                disabled={editingKey !== ''}
+                onClick={() => {
+                  const wrap = async () => {
+                    await save(counter);
+                    form.setFieldsValue(addRecord);
+                    setCounter(counter + 1);
+                  };
+                  wrap();
+                }}
+              >
+                <PlusOutlined/>
+              </Typography.Link>
+            </span>
+          );
+        }
+        const editable = isEditing(record);
+        return editable ? (
+          <span>
+            <Typography.Link
+              onClick={() => {
+                const wrap = async () => {
+                  await save(record.key);
+                  edit({ key: ''});
+                };
+                wrap();
+              }}
+              style={{ marginRight: 8 }}
+            >
+              <CheckOutlined />
+            </Typography.Link>
+            <Typography.Link
+              onClick={() => edit({ key: '' })}
+            >
+              <CloseOutlined />
+            </Typography.Link>
+          </span>
+        ) : (
+          <span>
+            <Typography.Link
+              disabled={editingKey !== ''}
+              onClick={() => edit(record)}
+              style={{ marginRight: 8 }}
+            >
+              <EditOutlined />
+            </Typography.Link>
+            <Typography.Link
+              disabled={editingKey !== ''}
+              onClick={() => remove(record)}
+            >
+              <DeleteOutlined />
+            </Typography.Link>
+          </span>
+        );
+      },
     },
   ];
 
@@ -303,29 +302,32 @@ const EditableTable = () => {
     }
     return {
       ...col,
-      onCell: (record: DataType) => ({
+      onCell: (record: Item) => ({
         record,
-        editable: col.editable,
         dataIndex: col.dataIndex,
         title: col.title,
-        handleSave: handleSave,
+        editing: isEditing(record),
       }),
     };
   });
 
   return (
-    <div>
+    <Form form={form} component={false}>
       <Table
-        components={components}
-        rowClassName={() => 'editable-row'}
+        components={{
+          body: {
+            cell: EditableCell,
+          },
+        }}
         bordered
-        dataSource={[...tableState.dataSource, tableState.zeroSource]}
+        dataSource={[...data, addRecord]}
         columns={mergedColumns}
+        rowClassName="editable-row"
         pagination={false}
       />
-    </div>
-  )
-}
+    </Form>
+  );
+};
 
 export const UploadView: React.FC = (
 ) => {
@@ -341,12 +343,11 @@ export const UploadView: React.FC = (
   const { setLoading } = useLoading();
   const [name, setName] = useLocalStorageState('name', '');
   const [description, setDescription] = useLocalStorageState('description', '');
-  const [attributesStr, setAttributes] = React.useState('[]');
+  const [attributes, setAttributes] = React.useState([]);
   const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
 
   // derived + async useEffect
   const assetList = [...coverAsset, ...additionalAssets];
-  const attributes = JSON.parse(attributesStr);
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
@@ -563,7 +564,10 @@ export const UploadView: React.FC = (
 
       <label className="action-field">
         <span className="field-title">Attributes</span>
-        <EditableTable />
+        <EditableTable
+          data={attributes}
+          setData={setAttributes}
+        />
       </label>
 
       <Upload
