@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Button,
   Col,
+  Input,
   List,
   Row,
   Statistic,
@@ -17,6 +18,7 @@ import WebBundlr from '@bundlr-network/client/build/web';
 import BigNumber from 'bignumber.js';
 
 import { useWindowDimensions } from '../components/AppBar';
+import { CollapsePanel } from '../components/CollapsePanel';
 import {
   decLoading,
   incLoading,
@@ -29,6 +31,7 @@ import {
 import {
   notify,
   shortenAddress,
+  useLocalStorageState,
 } from '../utils/common';
 import {
   explorerLinkFor,
@@ -109,13 +112,35 @@ export const UploadView: React.FC = (
 
   // user inputs
   // Array<RcFile>
-  const [assetList, setAssetList] = React.useState<Array<any>>([]);
-  const { setLoading } = useLoading();
+  const [coverAsset, setCoverAsset] = React.useState<Array<any>>([]);
+  const [additionalAssets, setAdditionalAssets] = React.useState<Array<any>>([]);
 
-  // async useEffect
+  const { setLoading } = useLoading();
+  const [name, setName] = useLocalStorageState('name', '');
+  const [description, setDescription] = useLocalStorageState('description', '');
+  const [attributesStr, setAttributes] = useLocalStorageState('attributes', '[]');
+  const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
+
+  // derived + async useEffect
+  const assetList = [...coverAsset, ...additionalAssets];
+  const attributes = JSON.parse(attributesStr);
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
+
+  const formatManifest = () => {
+    return JSON.stringify({
+      name,
+      description,
+      image: '',
+      external_url: externalUrl,
+      attributes,
+      properties: {
+        files: [],
+        category: '',
+      },
+    });
+  };
 
   const getBalance = async () => {
     if (!bundlr) return;
@@ -265,13 +290,76 @@ export const UploadView: React.FC = (
       </Col>
       </Row>
 
+      <label className="action-field">
+        <span className="field-title">Name</span>
+        <Input.TextArea
+          id="name-field"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoSize
+        />
+      </label>
+
+      <label className="action-field">
+        <span className="field-title">Description</span>
+        <Input.TextArea
+          id="name-field"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          autoSize
+        />
+      </label>
+
       <div>
       <Upload
+        beforeUpload={asset => { setCoverAsset([asset]); }}
+        onRemove={() => { setCoverAsset([]); }}
+        listType="picture"
+        fileList={coverAsset}
+        className="select-file-upload"
+      >
+        <Button>
+          Select Cover Image
+        </Button>
+      </Upload>
+      </div>
+
+      <CollapsePanel
+        id="additional-options"
+        panelName="Additional Options"
+      >
+      <label className="action-field">
+        <span className="field-title">External URL</span>
+        <Input.TextArea
+          id="name-field"
+          value={externalUrl}
+          onChange={(e) => setExternalUrl(e.target.value)}
+          autoSize
+        />
+      </label>
+
+      <label className="action-field">
+        <span className="field-title">Attributes</span>
+        <List
+          itemLayout="horizontal"
+          dataSource={attributes}
+          renderItem={(attribute: any) => (
+            <List.Item>
+              <List.Item.Meta
+                title={attribute.trait_type}
+                description={attribute.value}
+              />
+            </List.Item>
+          )}
+        />
+      </label>
+
+      <Upload
         beforeUpload={asset => {
-          setAssetList(assetList => [...assetList, asset]);
+          setAdditionalAssets(assetList => [...assetList, asset]);
         }}
         onRemove={asset => {
-          setAssetList(assetList => {
+          setAdditionalAssets(assetList => {
             const index = assetList.indexOf(asset);
             const newAssetList = assetList.slice();
             newAssetList.splice(index, 1);
@@ -279,17 +367,18 @@ export const UploadView: React.FC = (
           });
         }}
         listType="picture"
-        fileList={assetList}
+        fileList={additionalAssets}
         className="select-file-upload"
       >
-        <Button icon={<UploadOutlined />}>
-          select file
+        <Button>
+          Add File
         </Button>
       </Upload>
-      </div>
+      </CollapsePanel>
 
       <div>
       <Button
+        icon={<UploadOutlined />}
         onClick={() => {
           const wrap = async () => {
             setLoading(incLoading);
