@@ -16,6 +16,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import WebBundlr from '@bundlr-network/client/build/web';
 import BigNumber from 'bignumber.js';
 
+import { useWindowDimensions } from '../components/AppBar';
 import {
   decLoading,
   incLoading,
@@ -237,16 +238,24 @@ export const UploadView: React.FC = (
           name: asset.name,
         });
       }
-    }
 
-    setUploaded(uploaded);
+      setUploaded(uploaded);
+    }
 
     // refresh
     await getBalance();
   };
 
+  const maxWidth = 960;
+  const { width } = useWindowDimensions();
   return (
-    <div className="app stack arweave-upload" style={{ margin: 'auto' }}>
+    <div
+      className="app stack arweave-upload"
+      style={{
+        margin: 'auto',
+        width: Math.min(width, maxWidth),
+      }}
+    >
       <Row>
       <Col span={12}>
       <Statistic title="Price" value={price ? price.div(LAMPORTS_PER_SOL).toString() : 0} />
@@ -270,6 +279,7 @@ export const UploadView: React.FC = (
             return newAssetList;
           });
         }}
+        listType="picture"
         fileList={assetList}
         className="select-file-upload"
       >
