@@ -199,9 +199,7 @@ const EditableTable = (
         setData(newData);
         setEditingKey('');
       } else {
-        console.log(row);
         row.key = key.toString();
-        console.log(row);
         newData.push(row);
         setData(newData);
         setEditingKey('');
@@ -234,7 +232,6 @@ const EditableTable = (
       width: '5%',
       render: (_: any, record: Item) => {
         // special
-        console.log(record);
         if (record.key === '') {
           return (
             <span>
@@ -343,7 +340,7 @@ export const UploadView: React.FC = (
   const { setLoading } = useLoading();
   const [name, setName] = useLocalStorageState('name', '');
   const [description, setDescription] = useLocalStorageState('description', '');
-  const [attributes, setAttributes] = React.useState([]);
+  const [attributes, setAttributes] = useLocalStorageState('attributes', []);
   const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
 
   // derived + async useEffect
