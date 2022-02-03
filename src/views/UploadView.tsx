@@ -841,7 +841,7 @@ export const UploadView: React.FC = (
       className="app stack arweave-upload"
       style={{
         margin: 'auto',
-        width: Math.min(width, maxWidth),
+        maxWidth: Math.min(width, maxWidth),
       }}
     >
       <Row>
