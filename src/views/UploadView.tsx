@@ -11,7 +11,6 @@ import {
   Typography,
   Upload,
 } from 'antd';
-import { FormInstance } from 'antd/lib/form';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -45,13 +44,10 @@ import {
   MasterEdition,
   Metadata,
   MetadataDataData,
-  Uses,
 } from '@metaplex-foundation/mpl-token-metadata';
 
 import WebBundlr from '@bundlr-network/client/build/web';
 import SolanaConfig from '@bundlr-network/client/build/web/currencies/solana';
-import BundlrTransaction from '@bundlr-network/client/build/common/transaction';
-import DataItem from 'arbundles/src/DataItem';
 import SolanaSigner from 'arbundles/src/signing/chains/SolanaSigner';
 import { createData } from 'arbundles/src/ar-data-create';
 
@@ -154,10 +150,6 @@ const EditableTable = (
   const edit = (record: Partial<Item> & { key: React.Key }) => {
     form.setFieldsValue({ trait_type: '', value: '', ...record });
     setEditingKey(record.key);
-  };
-
-  const cancel = () => {
-    setEditingKey('');
   };
 
   const save = async (key: React.Key) => {
@@ -529,7 +521,6 @@ export const UploadView: React.FC = (
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
   const [signerStr, setSigner] = useLocalStorageState('bundlrSigner', '');
-  const bundlrAddress = bundlr?.address;
 
   const formatManifest = (
     assetLinks: Array<string>,
