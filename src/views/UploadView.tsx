@@ -53,6 +53,7 @@ import { createData } from 'arbundles/src/ar-data-create';
 import BigNumber from 'bignumber.js';
 import BN from 'bn.js';
 import Mime from 'mime';
+import sha3 from 'js-sha3';
 
 import { useWindowDimensions } from '../components/AppBar';
 import { CollapsePanel } from '../components/CollapsePanel';
@@ -582,6 +583,7 @@ export const UploadView: React.FC = (
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
+  const [signer, setSigner] = React.useState<Keypair | null>(null);
 
   const formatManifest = (
     assetLinks: Array<string>,
@@ -636,6 +638,22 @@ export const UploadView: React.FC = (
 
   React.useEffect(() => { getBalance() }, [bundlr]);
   React.useEffect(() => { getPrice() }, [bundlr, assetList]);
+
+  const deriveSigner = async () => {
+    const message = 'JustMint SecretKey';
+    const signature = await wallet.signMessage(Buffer.from(message));
+    const hash = sha3.sha3_512.arrayBuffer(signature);
+    const digest = Buffer.from(hash.slice(0, 32));
+
+    const signer = Keypair.fromSeed(digest);
+
+    notify({
+      message: 'Derived signer key',
+      description: explorerLinkCForAddress(
+        signer.publicKey.toBase58(), connection),
+    });
+    setSigner(signer);
+  };
 
   const bundlrUpload = async () => {
     if (assetList.length === 0) {
