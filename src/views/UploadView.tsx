@@ -637,7 +637,7 @@ export const UploadView: React.FC = (
   };
 
   React.useEffect(() => { getBalance() }, [bundlr]);
-  React.useEffect(() => { getPrice() }, [bundlr, assetList]);
+  React.useEffect(() => { getPrice() }, [bundlr, coverAsset, additionalAssets]);
 
   const deriveSigner = async () => {
     const message = 'JustMint SecretKey';
