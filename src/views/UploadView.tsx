@@ -640,10 +640,9 @@ export const UploadView: React.FC = (
       );
     }));
 
-    // TODO: manual signAll?
     for (const dataItem of assetDataItems) {
       await dataItem.sign(bundlrSigner);
-      console.log(dataItem);
+      console.log(dataItem.id);
     }
 
     const manifest = formatManifest(
@@ -653,10 +652,14 @@ export const UploadView: React.FC = (
       Mime.getType(assetList[0].type),
     );
 
-    const manifestDataItem = bundlr.createTransaction(
-      JSON.stringify(manifest), { tags: manifestTags });
+    const manifestDataItem = createData(
+      JSON.stringify(manifest),
+      bundlrSigner,
+      { tags: manifestTags },
+    );
 
-    await (manifestDataItem as BundlrTransaction).sign();
+    await manifestDataItem.sign(bundlrSigner);
+    console.log('metadata', manifestDataItem.id);
 
     const arweavePathManifest = createArweavePathManifest(
       assetDataItems.map((assetDataItem, idx) => ({
@@ -666,12 +669,14 @@ export const UploadView: React.FC = (
       manifestDataItem.id,
     );
 
-    const arweavePathManifestDataItem = bundlr.createTransaction(
+    const arweavePathManifestDataItem = createData(
       JSON.stringify(arweavePathManifest),
+      bundlrSigner,
       { tags: arweavePathManifestTags },
     );
 
-    await (arweavePathManifestDataItem as BundlrTransaction).sign();
+    await arweavePathManifestDataItem.sign(bundlrSigner);
+    console.log('manifest', arweavePathManifestDataItem.id);
 
     const dataItems = [
       ...assetDataItems,
@@ -795,7 +800,8 @@ export const UploadView: React.FC = (
       };
       try {
         const res = await bundlr.uploader.dataItemUploader(
-          dataItem as BundlrTransaction);
+          // TODO: fix the dependency mismatch requiring any...
+          dataItem as any);
         if (res.status !== 200 && res.status != 201) {
           throw new Error(`Bad status code ${res.status}`);
         }
