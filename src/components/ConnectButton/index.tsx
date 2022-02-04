@@ -35,7 +35,7 @@ export const ConnectButton = (props: ConnectButtonProps) => {
         }}
         disabled={connected && disabled}
       >
-        {connected ? children : 'Connect Wallet'}
+        {children}
       </Button>
     );
   }

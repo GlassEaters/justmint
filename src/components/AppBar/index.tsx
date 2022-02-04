@@ -128,9 +128,6 @@ export const AppBar = () => {
           {/*!connected && (
             <HowToBuyModal buttonClassName="modal-button-default" />
           )*/}
-          {!connected && (
-            <ConnectButton style={{ height: 48 }} allowWalletChange />
-          )}
           {connected && (
             <>
               <CurrentUserBadge

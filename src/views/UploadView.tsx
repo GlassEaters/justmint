@@ -58,6 +58,7 @@ import sha3 from 'js-sha3';
 import bs58 from 'bs58';
 
 import { useWindowDimensions } from '../components/AppBar';
+import { ConnectButton } from '../components/ConnectButton';
 import { CollapsePanel } from '../components/CollapsePanel';
 import {
   decLoading,
@@ -502,7 +503,6 @@ export const UploadView: React.FC = (
   const connection = useConnection();
   const { endpoint } = useConnectionConfig();
   const wallet = useWallet();
-  const [bundlr, setBundlr] = React.useState<WebBundlr | null>(null);
 
   // user inputs
   // Array<RcFile>
@@ -520,7 +520,9 @@ export const UploadView: React.FC = (
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
+
   const [signerStr, setSigner] = useLocalStorageState('bundlrSigner', '');
+  const [bundlr, setBundlr] = React.useState<WebBundlr | null>(null);
 
   const formatManifest = (
     assetLinks: Array<string>,
@@ -602,10 +604,17 @@ export const UploadView: React.FC = (
   React.useEffect(() => { initBundlr() }, [signerStr, endpoint]);
   React.useEffect(() => { getBalance() }, [bundlr]);
   React.useEffect(() => { getPrice() }, [bundlr, coverAsset, additionalAssets]);
+  React.useEffect(() => {
+    if (wallet.disconnecting) {
+      setSigner('');
+      setBundlr(null);
+    }
+  }, [wallet]);
+
 
   const deriveSigner = async () => {
     const message = 'JustMint SecretKey';
-    const signature = await wallet.signMessage(Buffer.from(message));
+    const signature = await (wallet.adapter as any).signMessage(Buffer.from(message));
     const hash = sha3.sha3_512.arrayBuffer(signature);
     const digest = Buffer.from(hash.slice(0, 32));
 
@@ -881,6 +890,57 @@ export const UploadView: React.FC = (
 
   const maxWidth = 960;
   const { width } = useWindowDimensions();
+
+  const onConnect = React.useCallback(() => {
+    const wrap = async () => {
+      setLoading(incLoading);
+      try {
+        await deriveSigner();
+      } catch (err) {
+        console.log(err);
+      }
+      setLoading(decLoading);
+    };
+    wrap();
+  }, [wallet]);
+
+  React.useEffect(() => {
+    const adapter = wallet.adapter;
+    if (adapter && !signerStr) {
+      adapter.on('connect', onConnect);
+      return () => {
+        adapter.off('connect', onConnect);
+      };
+    }
+  }, [wallet]);
+
+  if (!bundlr) {
+    return (
+      <div
+        className="app stack"
+        style={{ textAlign: 'center' }}
+      >
+        <div>
+        {wallet.connected ? (
+          <Button
+            className="connector"
+            onClick={onConnect}
+            style={{ height: '48px' }}
+          >
+            Connect to Bundlr
+          </Button>
+        ) : (
+          <ConnectButton
+            style={{ height: '48px' }}
+          >
+            Connect to Bundlr
+          </ConnectButton>
+        )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="app stack arweave-upload"
@@ -889,37 +949,13 @@ export const UploadView: React.FC = (
         maxWidth: Math.min(width, maxWidth),
       }}
     >
-      <div>
-      <Button
-        onClick={() => {
-          const wrap = async () => {
-            setLoading(incLoading);
-            try {
-              await deriveSigner();
-            } catch (err) {
-              console.log(err);
-              notify({
-                message: `Signer derivation for bundlr network failed`,
-                description: err.message,
-              })
-            }
-            setLoading(decLoading);
-          };
-          wrap();
-        }}
-        disabled={!wallet}
-      >
-        Connect to Bundlr
-      </Button>
-      </div>
-
       <Row>
       <Col span={12}>
-      <Statistic title="Price Est." value={price ? price.div(LAMPORTS_PER_SOL).toString() : 'Not connected'} />
+      <Statistic title="Price Est." value={price ? price.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'} />
       </Col>
 
       <Col span={12}>
-      <Statistic title="Balance" value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Not connected'} />
+      <Statistic title="Balance" value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'} />
       </Col>
       </Row>
 
