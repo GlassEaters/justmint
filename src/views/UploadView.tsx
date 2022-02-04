@@ -585,7 +585,12 @@ export const UploadView: React.FC = (
   const initBundlr = async () => {
     if (!signerStr) return;
 
-    const rawSigner = new SolanaSigner(signerStr);
+    const bundlrReadKey = bs58.encode([
+      ...bs58.decode(signerStr).slice(32),
+      ...bs58.decode(signerStr).slice(0, 32),
+    ]);
+    const rawSigner = new SolanaSigner(bundlrReadKey);
+    console.log('raw', rawSigner);
 
     const bundlr = new WebBundlr(
       "https://node1.bundlr.network",
@@ -836,6 +841,9 @@ export const UploadView: React.FC = (
       setUploaded(uploaded);
     }
 
+    // refresh
+    await getBalance();
+
     for (const u of uploaded)
       if (u.arweave === null)
         throw new Error('Failed to upload some assets');
@@ -878,9 +886,6 @@ export const UploadView: React.FC = (
       });
       await connection.confirmTransaction(result.txid, 'finalized');
     }
-
-    // refresh
-    await getBalance();
   };
 
   const maxWidth = 960;
