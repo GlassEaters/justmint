@@ -9,7 +9,7 @@ import { SPLTokenListProvider } from '../contexts/tokenList';
 import { WalletProvider } from '../contexts/WalletContext';
 import { AppLayout } from './Layout';
 
-import { BundlrProvider, UploadView } from '../views/UploadView';
+import { UploadView } from '../views/UploadView';
 
 export const App = () => {
   return (
@@ -19,13 +19,11 @@ export const App = () => {
       <CoingeckoProvider>
       <LoaderProvider>
       <WalletProvider>
-      <BundlrProvider>
         <AppLayout>
           <Switch>
             <Route exact path="/" component={UploadView} />
           </Switch>
         </AppLayout>
-      </BundlrProvider>
       </WalletProvider>
       </LoaderProvider>
       </CoingeckoProvider>

@@ -26,7 +26,10 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
+  Transaction,
   TransactionInstruction,
+  TransactionSignature,
+  sendAndConfirmRawTransaction,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import {
@@ -46,14 +49,17 @@ import {
 } from '@metaplex-foundation/mpl-token-metadata';
 
 import WebBundlr from '@bundlr-network/client/build/web';
+import SolanaConfig from '@bundlr-network/client/build/web/currencies/solana';
 import BundlrTransaction from '@bundlr-network/client/build/common/transaction';
 import DataItem from 'arbundles/src/DataItem';
+import SolanaSigner from 'arbundles/src/signing/chains/SolanaSigner';
 import { createData } from 'arbundles/src/ar-data-create';
 
 import BigNumber from 'bignumber.js';
 import BN from 'bn.js';
 import Mime from 'mime';
 import sha3 from 'js-sha3';
+import bs58 from 'bs58';
 
 import { useWindowDimensions } from '../components/AppBar';
 import { CollapsePanel } from '../components/CollapsePanel';
@@ -79,68 +85,6 @@ import {
 import {
   explorerLinkFor,
 } from '../utils/transactions';
-
-export type BundlrContextState = {
-  bundlr: WebBundlr | null,
-}
-
-export const BundlrContext = React.createContext<BundlrContextState | null>(null);
-
-export const BundlrProvider = ({ children }: { children: React.ReactNode }) => {
-  const wallet = useWallet();
-  const { endpoint } = useConnectionConfig();
-  const [bundlr, setBundlr] = React.useState<WebBundlr | null>(null);
-
-  const initBundlr = async () => {
-    if (!wallet.connected) return;
-
-    const bundlr = new WebBundlr(
-      "https://node1.bundlr.network",
-      "solana",
-      wallet,
-      { providerUrl: endpoint.url },
-    );
-
-    let succeeded;
-    let message;
-    try {
-      await bundlr.ready();
-      succeeded = !!bundlr.address;
-      message = 'Something went wrong';
-    } catch (err) {
-      console.log(err);
-      succeeded = false;
-      message = err.message;
-    }
-
-    if (!succeeded) {
-      notify({
-        message: 'Failed to connect to bundlr network',
-        description: message,
-      })
-      return;
-    }
-    setBundlr(bundlr);
-  };
-
-  React.useEffect(() => { initBundlr() }, [wallet, endpoint]);
-
-  return (
-    <BundlrContext.Provider
-      value={{ bundlr }}
-    >
-      {children}
-    </BundlrContext.Provider>
-  );
-};
-
-export const useBundlr = () => {
-  const context = React.useContext(BundlrContext);
-  if (context === null) {
-    throw new Error(`useBundlr must be used with a BundlrProvider`);
-  }
-  return context;
-};
 
 type UploadMeta = {
   arweave: string | null,
@@ -564,8 +508,9 @@ export const UploadView: React.FC = (
 ) => {
   // contexts
   const connection = useConnection();
+  const { endpoint } = useConnectionConfig();
   const wallet = useWallet();
-  const { bundlr } = useBundlr();
+  const [bundlr, setBundlr] = React.useState<WebBundlr | null>(null);
 
   // user inputs
   // Array<RcFile>
@@ -583,7 +528,8 @@ export const UploadView: React.FC = (
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
-  const [signer, setSigner] = React.useState<Keypair | null>(null);
+  const [signerStr, setSigner] = useLocalStorageState('bundlrSigner', '');
+  const bundlrAddress = bundlr?.address;
 
   const formatManifest = (
     assetLinks: Array<string>,
@@ -605,7 +551,7 @@ export const UploadView: React.FC = (
   const getBalance = async () => {
     if (!bundlr) return;
     try {
-      const balance = await bundlr.getBalance(bundlr.address);
+      const balance = await bundlr.getLoadedBalance();
       setBalance(balance);
     } catch (err) {
       console.log(err);
@@ -636,6 +582,28 @@ export const UploadView: React.FC = (
     }
   };
 
+  const initBundlr = async () => {
+    if (!signerStr) return;
+
+    const rawSigner = new SolanaSigner(signerStr);
+
+    const bundlr = new WebBundlr(
+      "https://node1.bundlr.network",
+      "solana",
+      rawSigner,
+      { providerUrl: endpoint.url },
+    );
+
+    // override injected
+    (bundlr.utils.currencyConfig as SolanaConfig)['signer'] = rawSigner;
+
+    // manually ready...
+    bundlr.address = new PublicKey(bs58.decode(signerStr).slice(0, 32));
+
+    setBundlr(bundlr);
+  };
+
+  React.useEffect(() => { initBundlr() }, [signerStr, endpoint]);
   React.useEffect(() => { getBalance() }, [bundlr]);
   React.useEffect(() => { getPrice() }, [bundlr, coverAsset, additionalAssets]);
 
@@ -647,12 +615,15 @@ export const UploadView: React.FC = (
 
     const signer = Keypair.fromSeed(digest);
 
+    setSigner(bs58.encode([
+      ...signer.publicKey.toBuffer(),
+      ...signer.secretKey,
+    ]));
     notify({
       message: 'Derived signer key',
       description: explorerLinkCForAddress(
         signer.publicKey.toBase58(), connection),
     });
-    setSigner(signer);
   };
 
   const bundlrUpload = async () => {
@@ -672,6 +643,7 @@ export const UploadView: React.FC = (
     // TODO: manual signAll?
     for (const dataItem of assetDataItems) {
       await dataItem.sign(bundlrSigner);
+      console.log(dataItem);
     }
 
     const manifest = formatManifest(
@@ -717,19 +689,68 @@ export const UploadView: React.FC = (
     if (balance.lt(price)) {
       try {
         const amount = price.minus(balance);
-        const multiplier = 1.1; // adjusted up to avoid spurious failures...
 
+        const signer = new Keypair({
+          publicKey: bs58.decode(signerStr).slice(0, 32),
+          secretKey: bs58.decode(signerStr).slice(32),
+        });
         const to = await bundlr.utils.getBundlerAddress(bundlr.utils.currency);
-        const baseFee = await c.getFee(amount, to)
-        const fee = (baseFee.multipliedBy(multiplier)).toFixed(0).toString();
-        const tx = await c.createTx(amount, to, fee.toString());
-        tx.txId = await c.sendTx(tx.tx);
+
+        const { blockhash: recentBlockhash, feeCalculator }
+          = await connection.getRecentBlockhash();
+
+        {
+          const transaction = new Transaction({
+              recentBlockhash,
+              feePayer: wallet.publicKey,
+          });
+
+          // fund temporary
+          transaction.add(
+              SystemProgram.transfer({
+                  fromPubkey: wallet.publicKey,
+                  toPubkey: signer.publicKey,
+                  lamports: +(amount.plus(new BigNumber(feeCalculator.lamportsPerSignature))).toNumber(),
+              }),
+          );
+
+          transaction.setSigners(wallet.publicKey);
+          await wallet.signTransaction(transaction);
+
+          await sendAndConfirmRawTransaction(
+            connection,
+            transaction.serialize(),
+            { commitment: 'confirmed' }
+          );
+        }
+
+        let txId: TransactionSignature;
+        {
+          const transaction = new Transaction({
+              recentBlockhash,
+              feePayer: signer.publicKey,
+          });
+
+          // fund bundlr from temporary (which signed the data items)
+          transaction.add(
+              SystemProgram.transfer({
+                  fromPubkey: signer.publicKey,
+                  toPubkey: new PublicKey(to),
+                  lamports: +new BigNumber(amount).toNumber(),
+              }),
+          );
+
+          transaction.setSigners(signer.publicKey);
+          transaction.sign(signer);
+
+          txId = await connection.sendRawTransaction(transaction.serialize());
+        }
 
         notify({
           message: `Funded ${shortenAddress(to)}. Waiting confirmation`,
           description: (
             <a
-              href={explorerLinkFor(tx.txId, connection)}
+              href={explorerLinkFor(txId, connection)}
               target="_blank"
               rel="noreferrer"
             >
@@ -738,10 +759,10 @@ export const UploadView: React.FC = (
           ),
         })
 
-        await connection.confirmTransaction(tx.txId, 'finalized');
+        await connection.confirmTransaction(txId, 'finalized');
 
         const res = await bundlr.utils.api.post(
-            `/account/balance/${bundlr.utils.currency}`, { tx_id: tx.txId });
+            `/account/balance/${bundlr.utils.currency}`, { tx_id: txId });
 
         if (res.status != 200) {
           const context = 'Posting transaction information to the bundlr';
@@ -809,6 +830,10 @@ export const UploadView: React.FC = (
       setUploaded(uploaded);
     }
 
+    for (const u of uploaded)
+      if (u.arweave === null)
+        throw new Error('Failed to upload some assets');
+
     const metadataLink = uploaded[assetList.length].arweave;
     const { instructions, mint } = await mintNFTInstructions(
       connection,
@@ -862,13 +887,37 @@ export const UploadView: React.FC = (
         maxWidth: Math.min(width, maxWidth),
       }}
     >
+      <div>
+      <Button
+        onClick={() => {
+          const wrap = async () => {
+            setLoading(incLoading);
+            try {
+              await deriveSigner();
+            } catch (err) {
+              console.log(err);
+              notify({
+                message: `Signer derivation for bundlr network failed`,
+                description: err.message,
+              })
+            }
+            setLoading(decLoading);
+          };
+          wrap();
+        }}
+        disabled={!wallet}
+      >
+        Connect to Bundlr
+      </Button>
+      </div>
+
       <Row>
       <Col span={12}>
-      <Statistic title="Price Est." value={price ? price.div(LAMPORTS_PER_SOL).toString() : 0} />
+      <Statistic title="Price Est." value={price ? price.div(LAMPORTS_PER_SOL).toString() : 'Not connected'} />
       </Col>
 
       <Col span={12}>
-      <Statistic title="Balance" value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 0} />
+      <Statistic title="Balance" value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Not connected'} />
       </Col>
       </Row>
 
