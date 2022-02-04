@@ -542,7 +542,7 @@ export const UploadView: React.FC = (
       external_url: externalUrl,
       attributes,
       properties: {
-        files: assetLinks.slice(1),
+        files: assetLinks.slice(),
         category,
       },
     };
@@ -855,7 +855,7 @@ export const UploadView: React.FC = (
       new MetadataDataData({
         name: name,
         symbol: '',
-        uri: metadataLink,
+        uri: `https://arweave.net/${metadataLink}`,
         sellerFeeBasisPoints: 0,
         creators: [
           new Creator({
