@@ -9,6 +9,7 @@ import {
   Row,
   Statistic,
   Table,
+  Tooltip,
   Typography,
   Upload,
 } from 'antd';
@@ -18,6 +19,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
+  QuestionCircleOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 
@@ -102,6 +104,7 @@ interface EditableCellProps<T extends Item> extends React.HTMLAttributes<HTMLEle
   record: T;
   index: number;
   rules: Array<any>;
+  placeholder: string;
   children: React.ReactNode;
 }
 
@@ -113,6 +116,7 @@ function EditableCell<T extends Item>({
   index,
   children,
   rules,
+  placeholder,
   ...restProps
 }: EditableCellProps<T>) {
   return (
@@ -129,7 +133,10 @@ function EditableCell<T extends Item>({
             },
           ]}
         >
-          <Input className="no-outline-on-error" />
+          <Input
+            className="no-outline-on-error"
+            placeholder={placeholder}
+          />
         </Form.Item>
       ) : (
         children
@@ -139,11 +146,12 @@ function EditableCell<T extends Item>({
 };
 
 function EditableTable<T extends Item>(
-  { data, setData, inputColumns, defaults }: {
+  { data, setData, inputColumns, defaults, addTitle }: {
     data: Array<T>,
     setData: React.Dispatch<React.SetStateAction<Array<T>>>,
     inputColumns: Array<any>,
     defaults: T,
+    addTitle: string,
   },
 ) {
   const [form] = Form.useForm();
@@ -213,7 +221,9 @@ function EditableTable<T extends Item>(
                   wrap();
                 }}
               >
-                <PlusOutlined/>
+                <Tooltip title={addTitle}>
+                  <PlusOutlined/>
+                </Tooltip>
               </Typography.Link>
             </span>
           );
@@ -272,6 +282,7 @@ function EditableTable<T extends Item>(
         title: col.title,
         editing: isEditing(record) && (col.editingCheck ? col.editingCheck(record) : true),
         rules: col.rules ? col.rules : [] as Array<any>,
+        placeholder: col.placeholder,
       }),
     };
   });
@@ -997,12 +1008,10 @@ export const UploadView: React.FC = (
         <span className="field-title">Name</span>
         <Input
           id="name-field"
-          className="top-level-input"
           value={name}
           onChange={(e) => setName(e.target.value.substr(0, MAX_NAME_LENGTH))}
           placeholder={`Max ${MAX_NAME_LENGTH} characters`}
           autoFocus
-          size="large"
         />
       </label>
 
@@ -1010,11 +1019,9 @@ export const UploadView: React.FC = (
         <span className="field-title">Description</span>
         <Input.TextArea
           id="description-field"
-          className="top-level-input"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          autoSize={{ minRows: 3 }}
-          size="large"
+          // autoSize
         />
       </label>
 
@@ -1037,41 +1044,57 @@ export const UploadView: React.FC = (
         panelName="Additional Options"
       >
       <label className="action-field">
-        <span className="field-title">External URL</span>
-        <Input.TextArea
+        <span className="field-title">
+          External URL {"\u00A0"}
+          <Tooltip title={"URI pointing to an external url defining the asset, the game's main site, etc."}>
+            <QuestionCircleOutlined />
+          </Tooltip>
+        </span>
+        <Input
           id="external-url-field"
-          className="top-level-input"
           value={externalUrl}
           onChange={(e) => setExternalUrl(e.target.value)}
-          autoSize
-          size="large"
+          placeholder={`https://example.com`}
         />
       </label>
 
       <label className="action-field">
-        <span className="field-title">Attributes</span>
+        <span className="field-title">
+          Attributes {"\u00A0"}
+          <Tooltip title={"Array of attributes defining the characteristics of the asset"}>
+            <QuestionCircleOutlined />
+          </Tooltip>
+        </span>
         <EditableTable
           data={attributes}
           setData={setAttributes}
           defaults={{ trait_type: '', value: '' }}
+          addTitle={`Add a trait`}
           inputColumns={[
             {
               title: 'Trait Type',
               dataIndex: 'trait_type',
               width: '30%',
               editable: true,
+              placeholder: 'dog',
             },
             {
               title: 'Value',
               dataIndex: 'value',
               editable: true,
+              placeholder: 'samo',
             },
           ]}
         />
       </label>
 
       <label className="action-field">
-        <span className="field-title">Additional Assets</span>
+        <span className="field-title">
+          Additional Assets {"\u00A0"}
+          <Tooltip title={"Additional images, videos, GLBs, etc., that should be included"}>
+            <QuestionCircleOutlined />
+          </Tooltip>
+        </span>
       <Upload
         beforeUpload={asset => {
           setAdditionalAssets(assetList => [...assetList, asset]);
@@ -1100,7 +1123,12 @@ export const UploadView: React.FC = (
         panelName="Royalties & Creators"
       >
       <label className="action-field">
-        <span className="field-title">Royalty Percentage</span>
+        <span className="field-title">
+          Royalties Percentage {"\u00A0"}
+          <Tooltip title={"Royalties percentage awarded to creators"}>
+            <QuestionCircleOutlined />
+          </Tooltip>
+        </span>
         <InputNumber
           className="top-level-input"
           min={0} max={100} defaultValue={5}
@@ -1110,7 +1138,12 @@ export const UploadView: React.FC = (
       </label>
 
       <label className="action-field">
-        <span className="field-title">Creators</span>
+        <span className="field-title">
+          Creators {"\u00A0"}
+          <Tooltip title={"Creators of this NFT. You (the minter) are always a verified creator!"}>
+            <QuestionCircleOutlined />
+          </Tooltip>
+        </span>
         <EditableTable
           data={allCreators}
           setData={(cs: any[]) => {
@@ -1118,6 +1151,7 @@ export const UploadView: React.FC = (
             setCreators(nonfixed)
           }}
           defaults={{ creator: '', share: '', key: 0 }}
+          addTitle={`Add a creator`}
           inputColumns={[
             {
               title: 'Creator',
@@ -1127,6 +1161,7 @@ export const UploadView: React.FC = (
                 if (!wallet.publicKey) return true;
                 return record.creator !== wallet.publicKey.toBase58();
               },
+              placeholder: TOKEN_PROGRAM_ID.toBase58(),
               rules: [
                 {
                   validator: (_: any, value: string) => {
@@ -1145,6 +1180,7 @@ export const UploadView: React.FC = (
               dataIndex: 'share',
               width: '30%',
               editable: true,
+              placeholder: '0',
               rules: [
                 {
                   validator: (_: any, value: string) => {
