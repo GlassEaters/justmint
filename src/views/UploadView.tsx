@@ -4,6 +4,7 @@ import {
   Col,
   Form,
   Input,
+  InputNumber,
   List,
   Row,
   Statistic,
@@ -517,6 +518,7 @@ export const UploadView: React.FC = (
   const [description, setDescription] = useLocalStorageState('description', '');
   const [attributes, setAttributes] = useLocalStorageState('attributes', []);
   const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
+  const [sellerFeeBasisPoints, setSellerFeeBasisPoints] = useLocalStorageState('sellerFeeBasisPoints', 0);
 
   // derived + async useEffect
   const assetList = [...coverAsset, ...additionalAssets];
@@ -860,7 +862,7 @@ export const UploadView: React.FC = (
         name: name,
         symbol: '',
         uri: `https://arweave.net/${metadataLink}`,
-        sellerFeeBasisPoints: 0,
+        sellerFeeBasisPoints,
         creators: [
           new Creator({
             address: wallet.publicKey.toBase58(),
@@ -1048,6 +1050,16 @@ export const UploadView: React.FC = (
       </Upload>
       </label>
       </CollapsePanel>
+
+      <label className="action-field">
+        <span className="field-title">Royalty Percentage</span>
+        <InputNumber
+          className="top-level-input"
+          min={0} max={100} defaultValue={5}
+          onChange={(value) => setSellerFeeBasisPoints(value * 100)}
+          style={{ borderRadius: '8px' }}
+        />
+      </label>
 
       <div>
       <Button
