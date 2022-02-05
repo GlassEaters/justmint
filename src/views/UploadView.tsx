@@ -75,6 +75,7 @@ import {
   useConnection,
   useConnectionConfig,
 } from '../contexts/ConnectionContext';
+import { useSolPrice } from '../contexts/coingecko';
 import {
   notify,
   shortenAddress,
@@ -512,6 +513,7 @@ export const UploadView: React.FC = (
   const connection = useConnection();
   const { endpoint } = useConnectionConfig();
   const wallet = useWallet();
+  const solPrice = useSolPrice();
 
   // user inputs
   // Array<RcFile>
@@ -996,11 +998,19 @@ export const UploadView: React.FC = (
     >
       <Row>
       <Col span={12}>
-      <Statistic title="Price Est." value={price ? price.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'} />
+      <Statistic
+        title="Price Est."
+        value={price ? price.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'}
+        suffix={price ? 'SOL' : ''}
+      />
       </Col>
 
       <Col span={12}>
-      <Statistic title="Balance" value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'} />
+      <Statistic
+        title="Balance"
+        value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'}
+        suffix={price ? 'SOL' : ''}
+      />
       </Col>
       </Row>
 
