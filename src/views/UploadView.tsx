@@ -92,21 +92,19 @@ type UploadMeta = {
 
 
 interface Item {
-  key: string;
-  trait_type: string;
-  value: string;
+  key: React.Key;
 }
 
-interface EditableCellProps extends React.HTMLAttributes<HTMLElement> {
+interface EditableCellProps<T extends Item> extends React.HTMLAttributes<HTMLElement> {
   editing: boolean;
   dataIndex: string;
   title: any;
-  record: Item;
+  record: T;
   index: number;
   children: React.ReactNode;
 }
 
-const EditableCell: React.FC<EditableCellProps> = ({
+function EditableCell<T extends Item>({
   editing,
   dataIndex,
   title,
@@ -114,7 +112,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   index,
   children,
   ...restProps
-}) => {
+}: EditableCellProps<T>) {
   return (
     <td {...restProps}>
       {editing ? (
@@ -137,27 +135,29 @@ const EditableCell: React.FC<EditableCellProps> = ({
   );
 };
 
-const EditableTable = (
-  { data, setData }: {
-    data: Array<Item>,
-    setData: React.Dispatch<React.SetStateAction<Array<Item>>>,
+function EditableTable<T extends Item>(
+  { data, setData, inputColumns, defaults }: {
+    data: Array<T>,
+    setData: React.Dispatch<React.SetStateAction<Array<T>>>,
+    inputColumns: Array<any>,
+    defaults: T,
   },
-) => {
+) {
   const [form] = Form.useForm();
   const [counter, setCounter] = React.useState(0);
-  const [editingKey, setEditingKey] = React.useState('');
+  const [editingKey, setEditingKey] = React.useState<React.Key>('');
 
-  const isEditing = (record: Item) => record.key === editingKey;
-  const addRecord = { trait_type: '', value: '', key: '' };
+  const isEditing = (record: T) => record.key === editingKey;
+  const addRecord = { ...defaults, key: '' };
 
-  const edit = (record: Partial<Item> & { key: React.Key }) => {
-    form.setFieldsValue({ trait_type: '', value: '', ...record });
+  const edit = (record: Partial<T>) => {
+    form.setFieldsValue({ ...defaults, ...record });
     setEditingKey(record.key);
   };
 
   const save = async (key: React.Key) => {
     try {
-      const row = (await form.validateFields()) as Item;
+      const row = (await form.validateFields()) as T;
 
       const newData = [...data];
       const index = newData.findIndex(item => key === item.key);
@@ -182,28 +182,18 @@ const EditableTable = (
     }
   };
 
-  const remove = (record: Partial<Item> & { key: React.Key }) => {
+  const remove = (record: Partial<T>) => {
     const newData = [...data];
     setData(newData.filter(item => item.key !== record.key));
   };
 
   const columns = [
-    {
-      title: 'Trait Type',
-      dataIndex: 'trait_type',
-      width: '30%',
-      editable: true,
-    },
-    {
-      title: 'Value',
-      dataIndex: 'value',
-      editable: true,
-    },
+    ...inputColumns,
     {
       title: 'Action',
       dataIndex: 'Action',
       width: '5%',
-      render: (_: any, record: Item) => {
+      render: (_: any, record: T) => {
         // special
         if (record.key === '') {
           return (
@@ -232,7 +222,7 @@ const EditableTable = (
               onClick={() => {
                 const wrap = async () => {
                   await save(record.key);
-                  edit({ key: ''});
+                  edit({ key: ''} as any); // TODO: remove any
                 };
                 wrap();
               }}
@@ -241,7 +231,7 @@ const EditableTable = (
               <CheckOutlined />
             </Typography.Link>
             <Typography.Link
-              onClick={() => edit({ key: '' })}
+              onClick={() => edit({ key: '' } as any)} // TODO: remove any
             >
               <CloseOutlined />
             </Typography.Link>
@@ -273,7 +263,7 @@ const EditableTable = (
     }
     return {
       ...col,
-      onCell: (record: Item) => ({
+      onCell: (record: T) => ({
         record,
         dataIndex: col.dataIndex,
         title: col.title,
@@ -1023,6 +1013,20 @@ export const UploadView: React.FC = (
         <EditableTable
           data={attributes}
           setData={setAttributes}
+          defaults={{ trait_type: '', value: '' }}
+          inputColumns={[
+            {
+              title: 'Trait Type',
+              dataIndex: 'trait_type',
+              width: '30%',
+              editable: true,
+            },
+            {
+              title: 'Value',
+              dataIndex: 'value',
+              editable: true,
+            },
+          ]}
         />
       </label>
 
