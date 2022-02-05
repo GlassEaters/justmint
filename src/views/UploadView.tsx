@@ -101,6 +101,7 @@ interface EditableCellProps<T extends Item> extends React.HTMLAttributes<HTMLEle
   title: any;
   record: T;
   index: number;
+  rules: Array<any>;
   children: React.ReactNode;
 }
 
@@ -111,6 +112,7 @@ function EditableCell<T extends Item>({
   record,
   index,
   children,
+  rules,
   ...restProps
 }: EditableCellProps<T>) {
   return (
@@ -120,6 +122,7 @@ function EditableCell<T extends Item>({
           name={dataIndex}
           style={{ margin: 0 }}
           rules={[
+            ...rules,
             {
               required: true,
               message: `Please Input ${title}!`,
@@ -144,7 +147,7 @@ function EditableTable<T extends Item>(
   },
 ) {
   const [form] = Form.useForm();
-  const [counter, setCounter] = React.useState(0);
+  const [counter, setCounter] = React.useState(1);
   const [editingKey, setEditingKey] = React.useState<React.Key>('');
 
   const isEditing = (record: T) => record.key === editingKey;
@@ -267,7 +270,8 @@ function EditableTable<T extends Item>(
         record,
         dataIndex: col.dataIndex,
         title: col.title,
-        editing: isEditing(record),
+        editing: isEditing(record) && (col.editingCheck ? col.editingCheck(record) : true),
+        rules: col.rules ? col.rules : [] as Array<any>,
       }),
     };
   });
@@ -509,8 +513,17 @@ export const UploadView: React.FC = (
   const [attributes, setAttributes] = useLocalStorageState('attributes', []);
   const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
   const [sellerFeeBasisPoints, setSellerFeeBasisPoints] = useLocalStorageState('sellerFeeBasisPoints', 0);
+  const [creators, setCreators] = useLocalStorageState('creators', []);
 
   // derived + async useEffect
+  const requiredCreators = wallet.publicKey ? [
+    {
+      creator: wallet.publicKey.toBase58(),
+      share: '100',
+      key: 0,
+    }
+  ] : [];
+  const allCreators = [...requiredCreators, ...creators];
   const assetList = [...coverAsset, ...additionalAssets];
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
   const [price, setPrice] = React.useState<BigNumber | null>(null);
@@ -624,6 +637,31 @@ export const UploadView: React.FC = (
       description: explorerLinkCForAddress(
         signer.publicKey.toBase58(), connection),
     });
+  };
+
+  const checkCreators = async () => {
+    let total = 0;
+    for (const creator of allCreators) {
+      // double check. these should also be validated by form
+      let creatorKey;
+      try {
+        creatorKey = new PublicKey(creator.creator).toBase58();
+      } catch (err) {
+        throw new Error(`Invalid creator pubkey ${creator.creator}: ${err.message}`);
+      }
+      if (creator.creator !== creatorKey) {
+        throw new Error(`Invalid creator pubkey ${creator.creator}`);
+      }
+      const share = Number(creator.share);
+      if (isNaN(share))
+        throw new Error(`Could not parse share for ${creator.creator}`);
+      if (Math.floor(share) !== share)
+        throw new Error(`Share for ${creator.creator} contains decimals`);
+      total += share;
+    }
+    if (total !== 100) {
+      throw new Error(`Creator shares must add up to 100. Got ${total}`);
+    }
   };
 
   const bundlrUpload = async () => {
@@ -853,13 +891,13 @@ export const UploadView: React.FC = (
         symbol: '',
         uri: `https://arweave.net/${metadataLink}`,
         sellerFeeBasisPoints,
-        creators: [
-          new Creator({
-            address: wallet.publicKey.toBase58(),
-            verified: true,
-            share: 100,
+        creators: allCreators.map(c => {
+          return new Creator({
+            address: c.creator,
+            verified: c.creator === wallet.publicKey.toBase58(),
+            share: Number(c.share),
           })
-        ],
+        }),
       }),
       new BN(0),
     );
@@ -1065,6 +1103,61 @@ export const UploadView: React.FC = (
         />
       </label>
 
+      <label className="action-field">
+        <span className="field-title">Creators</span>
+        <EditableTable
+          data={allCreators}
+          setData={(cs: any[]) => {
+            const nonfixed = cs.filter((r: any) => r.creator !== wallet.publicKey.toBase58());
+            setCreators(nonfixed)
+          }}
+          defaults={{ creator: '', share: '', key: 0 }}
+          inputColumns={[
+            {
+              title: 'Creator',
+              dataIndex: 'creator',
+              editable: true,
+              editingCheck: (record: any) => {
+                if (!wallet.publicKey) return true;
+                return record.creator !== wallet.publicKey.toBase58();
+              },
+              rules: [
+                {
+                  validator: (_: any, value: string) => {
+                    try {
+                      const key = new PublicKey(value);
+                      return Promise.resolve();
+                    } catch (err) {
+                      return Promise.reject(new Error(`Invalid creator pubkey ${value}`));
+                    }
+                  },
+                }
+              ]
+            },
+            {
+              title: 'Share',
+              dataIndex: 'share',
+              width: '30%',
+              editable: true,
+              rules: [
+                {
+                  validator: (_: any, value: string) => {
+                    const share = Number(value);
+                    if (isNaN(share))
+                      return Promise.reject(new Error(`Non-numeric share: ${value}`));
+                    if (Math.floor(share) !== share)
+                      return Promise.reject(new Error(`Share contains decimals: ${value}`));
+                    if (share < 0 || share > 100)
+                      return Promise.reject(new Error(`Shared must be in range [0, 100]`));
+                    return Promise.resolve();
+                  },
+                }
+              ]
+            },
+          ]}
+        />
+      </label>
+
       <div>
       <Button
         icon={<UploadOutlined />}
@@ -1072,6 +1165,7 @@ export const UploadView: React.FC = (
           const wrap = async () => {
             setLoading(incLoading);
             try {
+              await checkCreators();
               await bundlrUpload();
             } catch (err) {
               console.log(err);
