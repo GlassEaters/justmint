@@ -186,7 +186,6 @@ export const explorerLinkCForAddress = (
       title={key}
       style={{
         fontFamily: 'Monospace',
-        color: '#19b784',
       }}
     >
       {shorten ? shortenAddress(key) : key}

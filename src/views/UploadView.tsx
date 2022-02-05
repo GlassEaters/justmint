@@ -44,6 +44,7 @@ import {
   MasterEdition,
   Metadata,
   MetadataDataData,
+  MAX_NAME_LENGTH,
 } from '@metaplex-foundation/mpl-token-metadata';
 
 import WebBundlr from '@bundlr-network/client/build/web';
@@ -173,8 +174,10 @@ const EditableTable = (
         setData(newData);
         setEditingKey('');
       }
+      return true;
     } catch (errInfo) {
       console.log('Validate Failed:', errInfo);
+      return false;
     }
   };
 
@@ -208,8 +211,9 @@ const EditableTable = (
                 disabled={editingKey !== ''}
                 onClick={() => {
                   const wrap = async () => {
-                    await save(counter);
-                    form.setFieldsValue(addRecord);
+                    if (await save(counter)) {
+                      form.setFieldsValue(addRecord);
+                    }
                     setCounter(counter + 1);
                   };
                   wrap();
@@ -285,7 +289,6 @@ const EditableTable = (
             cell: EditableCell,
           },
         }}
-        bordered
         dataSource={[...data, addRecord]}
         columns={mergedColumns}
         rowClassName="editable-row"
@@ -698,7 +701,8 @@ export const UploadView: React.FC = (
 
     if (balance.lt(price)) {
       try {
-        const amount = price.minus(balance);
+        // ~$.01 @ SOL=$100. Avoids multiple clicks / waits
+        const amount = BigNumber.max(price.minus(balance), 100000);
 
         const signer = new Keypair({
           publicKey: bs58.decode(signerStr).slice(0, 32),
@@ -963,9 +967,12 @@ export const UploadView: React.FC = (
         <span className="field-title">Name</span>
         <Input.TextArea
           id="name-field"
+          className="top-level-input"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value.substr(0, MAX_NAME_LENGTH))}
+          placeholder={`Max ${MAX_NAME_LENGTH} characters`}
           autoSize
+          autoFocus
         />
       </label>
 
@@ -973,9 +980,10 @@ export const UploadView: React.FC = (
         <span className="field-title">Description</span>
         <Input.TextArea
           id="name-field"
+          className="top-level-input"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          autoSize
+          autoSize={{ minRows: 3 }}
         />
       </label>
 
@@ -1001,6 +1009,7 @@ export const UploadView: React.FC = (
         <span className="field-title">External URL</span>
         <Input.TextArea
           id="name-field"
+          className="top-level-input"
           value={externalUrl}
           onChange={(e) => setExternalUrl(e.target.value)}
           autoSize
@@ -1015,6 +1024,8 @@ export const UploadView: React.FC = (
         />
       </label>
 
+      <label className="action-field">
+        <span className="field-title">Additional Assets</span>
       <Upload
         beforeUpload={asset => {
           setAdditionalAssets(assetList => [...assetList, asset]);
@@ -1035,6 +1046,7 @@ export const UploadView: React.FC = (
           Add File
         </Button>
       </Upload>
+      </label>
       </CollapsePanel>
 
       <div>
