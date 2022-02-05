@@ -1093,6 +1093,10 @@ export const UploadView: React.FC = (
       </label>
       </CollapsePanel>
 
+      <CollapsePanel
+        id="royalties-creators"
+        panelName="Royalties & Creators"
+      >
       <label className="action-field">
         <span className="field-title">Royalty Percentage</span>
         <InputNumber
@@ -1157,6 +1161,7 @@ export const UploadView: React.FC = (
           ]}
         />
       </label>
+      </CollapsePanel>
 
       <div>
       <Button
