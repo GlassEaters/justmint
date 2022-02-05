@@ -390,10 +390,19 @@ p {
   .ant-upload-list-item {
     border-radius: 10px;
   }
+
+  .ant-input-lg {
+    font-size: 14px;
+  }
 }
 
 #additional-options, #royalties-creators {
-  .ant-collapse > .ant-collapse-item > .ant-collapse-header {
-    padding: 8px 0px 8px;
+  .ant-collapse {
+    > .ant-collapse-item > .ant-collapse-header {
+      padding: 8px 0px 8px;
+    }
+    > .ant-collapse-item-active > .ant-collapse-header {
+      padding: 8px 0px 20px;
+    }
   }
 }

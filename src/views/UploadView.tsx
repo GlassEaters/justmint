@@ -995,25 +995,26 @@ export const UploadView: React.FC = (
 
       <label className="action-field">
         <span className="field-title">Name</span>
-        <Input.TextArea
+        <Input
           id="name-field"
           className="top-level-input"
           value={name}
           onChange={(e) => setName(e.target.value.substr(0, MAX_NAME_LENGTH))}
           placeholder={`Max ${MAX_NAME_LENGTH} characters`}
-          autoSize
           autoFocus
+          size="large"
         />
       </label>
 
       <label className="action-field">
         <span className="field-title">Description</span>
         <Input.TextArea
-          id="name-field"
+          id="description-field"
           className="top-level-input"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           autoSize={{ minRows: 3 }}
+          size="large"
         />
       </label>
 
@@ -1038,11 +1039,12 @@ export const UploadView: React.FC = (
       <label className="action-field">
         <span className="field-title">External URL</span>
         <Input.TextArea
-          id="name-field"
+          id="external-url-field"
           className="top-level-input"
           value={externalUrl}
           onChange={(e) => setExternalUrl(e.target.value)}
           autoSize
+          size="large"
         />
       </label>
 
