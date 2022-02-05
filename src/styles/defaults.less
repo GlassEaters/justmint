@@ -333,15 +333,6 @@ p {
   flex-direction: column;
   text-align: left;
 
-  > input {
-    border-radius: 8px;
-  }
-
-  > textarea {
-    border-radius: 8px;
-    resize: none,
-  }
-
   .field-title {
     text-align: left;
     font-style: normal;
@@ -366,12 +357,72 @@ p {
     margin-bottom: 12px;
   }
 
+  margin-bottom: 20px;
+}
+
+.arweave-upload {
   .top-level-input {
-    background: #151515;
+    background: #474B4F;
     border: none;
   }
 
-  margin-bottom: 20px;
+  .ant-table-thead > tr > th {
+    background: #474B4F;
+  }
+
+  .ant-table-tbody > tr > td {
+    background: #474B4F;
+  }
+
+  .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+    // background: #6B6E70;
+    background: #474B4F;
+  }
+
+
+  .anticon {
+    // color: #61892F;
+    color: @primary-color;
+  }
+
+  > textarea {
+    resize: none,
+  }
+
+  .ant-input {
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+
+    border-color: rgba(255, 255, 255, 0.2);
+    border-top-width: 0px !important;
+    border-left-width: 0px !important;
+    border-right-width: 0px !important;
+    border-bottom-width: 1px !important;
+  }
+
+  .ant-input:focus, input:focus {
+    border-color: @primary-color;
+
+    border-top-width: 0px !important;
+    border-left-width: 0px !important;
+    border-right-width: 0px !important;
+    border-bottom-width: 2px !important;
+
+    outline: none;
+    box-shadow: none;
+  }
+
+  .ant-form-item-control .ant-form-item-control-input .ant-form-item-control-input-content {
+    .ant-input:focus.no-outline-on-error {
+      border-top-width: 0px !important;
+      border-left-width: 0px !important;
+      border-right-width: 0px !important;
+      border-bottom-width: 2px !important;
+
+      outline: none;
+      box-shadow: none;
+    }
+  }
 }
 
 .fullAspectRatio > img {

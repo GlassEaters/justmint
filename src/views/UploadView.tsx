@@ -129,7 +129,7 @@ function EditableCell<T extends Item>({
             },
           ]}
         >
-          <Input.TextArea autoSize />
+          <Input className="no-outline-on-error" />
         </Form.Item>
       ) : (
         children
