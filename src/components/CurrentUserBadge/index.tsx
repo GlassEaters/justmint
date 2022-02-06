@@ -169,6 +169,7 @@ const AddFundsModal = (props: {
     >
       <div style={{ maxWidth: '100%' }}>
         <p style={{ color: 'white' }}>
+          {/* TODO REWORD */}
           We partner with <b>FTX</b> to make it simple to start purchasing
           digital collectibles.
         </p>

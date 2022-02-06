@@ -1288,6 +1288,7 @@ export const UploadView: React.FC = (
           className="action-field"
           style={{
             width: '100%',
+            marginBottom: 0,
           }}
         >
           <span className="field-title">
@@ -1312,6 +1313,10 @@ export const UploadView: React.FC = (
             }}
           />
         </label>
+        <p style={{ color: 'white', marginBottom: '10px' }}>
+          We integrate with the Bundlr Network to make it simple to mint
+          NFTs. Bundlr needs to be funded with SOL for arweave uploads.
+        </p>
         <Button
           className="fund-modal-btn"
           onClick={() => {
