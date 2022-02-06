@@ -64,6 +64,7 @@ import bs58 from 'bs58';
 import { useWindowDimensions } from '../components/AppBar';
 import { ConnectButton } from '../components/ConnectButton';
 import { CollapsePanel } from '../components/CollapsePanel';
+import { MetaplexModal } from "../components/MetaplexModal";
 import {
   decLoading,
   incLoading,
@@ -527,6 +528,8 @@ export const UploadView: React.FC = (
   const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
   const [sellerFeeBasisPoints, setSellerFeeBasisPoints] = useLocalStorageState('sellerFeeBasisPoints', 0);
   const [creators, setCreators] = useLocalStorageState('creators', []);
+  const [showAddFundsModal, setShowAddFundsModal] = React.useState(false);
+  const [fundBundlrAmount, setFundBundlrAmount] = React.useState(0);
 
   // derived + async useEffect
   const requiredCreators = wallet.publicKey ? [
@@ -677,6 +680,97 @@ export const UploadView: React.FC = (
     }
   };
 
+  const fundBundlr = async (amount: BigNumber) => {
+    const signer = new Keypair({
+      publicKey: bs58.decode(signerStr).slice(0, 32),
+      secretKey: bs58.decode(signerStr).slice(32),
+    });
+    const to = await bundlr.utils.getBundlerAddress(bundlr.utils.currency);
+
+    const { blockhash: recentBlockhash, feeCalculator }
+      = await connection.getRecentBlockhash();
+
+    {
+      const transaction = new Transaction({
+          recentBlockhash,
+          feePayer: wallet.publicKey,
+      });
+
+      // fund temporary
+      transaction.add(
+          SystemProgram.transfer({
+              fromPubkey: wallet.publicKey,
+              toPubkey: signer.publicKey,
+              lamports: +(amount.plus(new BigNumber(feeCalculator.lamportsPerSignature))).toNumber(),
+          }),
+      );
+
+      transaction.setSigners(wallet.publicKey);
+      await wallet.signTransaction(transaction);
+
+      await sendAndConfirmRawTransaction(
+        connection,
+        transaction.serialize(),
+        { commitment: 'confirmed' }
+      );
+    }
+
+    let txId: TransactionSignature;
+    {
+      const transaction = new Transaction({
+          recentBlockhash,
+          feePayer: signer.publicKey,
+      });
+
+      // fund bundlr from temporary (which signed the data items)
+      transaction.add(
+          SystemProgram.transfer({
+              fromPubkey: signer.publicKey,
+              toPubkey: new PublicKey(to),
+              lamports: +new BigNumber(amount).toNumber(),
+          }),
+      );
+
+      transaction.setSigners(signer.publicKey);
+      transaction.sign(signer);
+
+      txId = await connection.sendRawTransaction(
+        transaction.serialize(),
+        { skipPreflight: true },
+      );
+    }
+
+    notify({
+      message: `Funded ${shortenAddress(to)}. Waiting confirmation`,
+      description: (
+        <a
+          href={explorerLinkFor(txId, connection)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View on explorer
+        </a>
+      ),
+    })
+
+    await connection.confirmTransaction(txId, 'finalized');
+
+    const res = await bundlr.utils.api.post(
+        `/account/balance/${bundlr.utils.currency}`, { tx_id: txId });
+
+    if (res.status != 200) {
+      const context = 'Posting transaction information to the bundlr';
+      throw new Error(`HTTP Error: ${context}: ${res.status} ${res.statusText.length == 0 ? res.data : res.statusText}`);
+    }
+
+    notify({
+      message: `Posted funding transaction`,
+    })
+
+    // refresh
+    await getBalance();
+  };
+
   const bundlrUpload = async () => {
     if (assetList.length === 0) {
       throw new Error('Must upload at least 1 asset');
@@ -743,100 +837,7 @@ export const UploadView: React.FC = (
     });
 
     if (balance.lt(price)) {
-      try {
-        // ~$.01 @ SOL=$100. Avoids multiple clicks / waits
-        const amount = BigNumber.max(price.minus(balance), 100000);
-
-        const signer = new Keypair({
-          publicKey: bs58.decode(signerStr).slice(0, 32),
-          secretKey: bs58.decode(signerStr).slice(32),
-        });
-        const to = await bundlr.utils.getBundlerAddress(bundlr.utils.currency);
-
-        const { blockhash: recentBlockhash, feeCalculator }
-          = await connection.getRecentBlockhash();
-
-        {
-          const transaction = new Transaction({
-              recentBlockhash,
-              feePayer: wallet.publicKey,
-          });
-
-          // fund temporary
-          transaction.add(
-              SystemProgram.transfer({
-                  fromPubkey: wallet.publicKey,
-                  toPubkey: signer.publicKey,
-                  lamports: +(amount.plus(new BigNumber(feeCalculator.lamportsPerSignature))).toNumber(),
-              }),
-          );
-
-          transaction.setSigners(wallet.publicKey);
-          await wallet.signTransaction(transaction);
-
-          await sendAndConfirmRawTransaction(
-            connection,
-            transaction.serialize(),
-            { commitment: 'confirmed' }
-          );
-        }
-
-        let txId: TransactionSignature;
-        {
-          const transaction = new Transaction({
-              recentBlockhash,
-              feePayer: signer.publicKey,
-          });
-
-          // fund bundlr from temporary (which signed the data items)
-          transaction.add(
-              SystemProgram.transfer({
-                  fromPubkey: signer.publicKey,
-                  toPubkey: new PublicKey(to),
-                  lamports: +new BigNumber(amount).toNumber(),
-              }),
-          );
-
-          transaction.setSigners(signer.publicKey);
-          transaction.sign(signer);
-
-          txId = await connection.sendRawTransaction(transaction.serialize());
-        }
-
-        notify({
-          message: `Funded ${shortenAddress(to)}. Waiting confirmation`,
-          description: (
-            <a
-              href={explorerLinkFor(txId, connection)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View on explorer
-            </a>
-          ),
-        })
-
-        await connection.confirmTransaction(txId, 'finalized');
-
-        const res = await bundlr.utils.api.post(
-            `/account/balance/${bundlr.utils.currency}`, { tx_id: txId });
-
-        if (res.status != 200) {
-          const context = 'Posting transaction information to the bundlr';
-          throw new Error(`HTTP Error: ${context}: ${res.status} ${res.statusText.length == 0 ? res.data : res.statusText}`);
-        }
-
-        notify({
-          message: `Posted funding transaction`,
-        })
-      } catch (err) {
-        console.log(err);
-        notify({
-          message: `Failed to fund bundlr wallet`,
-          description: err.message,
-        })
-        return;
-      }
+      throw new Error('Please fund your bundlr wallet first!');
     }
 
     const uploaded: Array<UploadMeta | null> = [];
@@ -1007,7 +1008,17 @@ export const UploadView: React.FC = (
 
       <Col span={12}>
       <Statistic
-        title="Balance"
+        title={(
+          <div>
+            Bundlr Balance
+            <Button
+              id="fund-bundlr"
+              onClick={() => setShowAddFundsModal(true)}
+            >
+              Fund
+            </Button>
+          </div>
+        )}
         value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'}
         suffix={price ? 'SOL' : ''}
       />
@@ -1264,6 +1275,72 @@ export const UploadView: React.FC = (
           </List.Item>
         )}
       />}
+
+      <MetaplexModal
+        visible={showAddFundsModal}
+        onCancel={() => setShowAddFundsModal(false)}
+        title="Fund Bundlr"
+        bodyStyle={{
+          alignItems: 'start',
+        }}
+      >
+        <label
+          className="action-field"
+          style={{
+            width: '100%',
+          }}
+        >
+          <span className="field-title">
+            Add SOL {"\u00A0"}
+          </span>
+          <InputNumber
+            id="fund-bundlr-field"
+            value={fundBundlrAmount}
+            onChange={(value) => setFundBundlrAmount(value)}
+            placeholder={`Max ${MAX_NAME_LENGTH} characters`}
+            autoFocus
+            style={{
+              width: '100%',
+              background: '#242424',
+              borderRadius: 12,
+              marginBottom: 10,
+              height: 50,
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 10px',
+              justifyContent: 'space-between',
+              fontWeight: 700,
+            }}
+          />
+        </label>
+        <Button
+          className="connector"
+          onClick={() => {
+            const wrap = async () => {
+              setLoading(incLoading);
+              try {
+                const amount = new BigNumber(fundBundlrAmount).times(new BigNumber(LAMPORTS_PER_SOL));
+
+                await fundBundlr(amount);
+              } catch (err) {
+                console.log(err);
+                notify({
+                  message: `Failed to fund bundlr wallet`,
+                  description: err.message,
+                })
+              }
+              setLoading(decLoading);
+            }
+            wrap();
+            setShowAddFundsModal(false);
+          }}
+          style={{
+            width: '100%',
+          }}
+        >
+          Fund
+        </Button>
+      </MetaplexModal>
     </div>
   );
 }
