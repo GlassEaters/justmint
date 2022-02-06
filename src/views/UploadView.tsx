@@ -749,6 +749,9 @@ export const UploadView: React.FC = (
           href={explorerLinkFor(txId, connection)}
           target="_blank"
           rel="noreferrer"
+          style={{
+            color: '#7448A3',
+          }}
         >
           View on explorer
         </a>
@@ -1288,6 +1291,7 @@ export const UploadView: React.FC = (
         title="Manage Bundlr Wallet"
         bodyStyle={{
           alignItems: 'start',
+          padding: '24px 48px 48px 48px',
         }}
       >
         <Tabs defaultActiveKey="1" style={{ width: '100%' }}>
@@ -1386,7 +1390,7 @@ export const UploadView: React.FC = (
             width: '100%',
           }}
         >
-          Fund
+          Recover
         </Button>
         </Tabs.TabPane>
 
