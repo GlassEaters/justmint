@@ -6,7 +6,6 @@ import {
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import { Button, Popover, Select, Tooltip } from 'antd';
-import { WRAPPED_SOL_MINT } from '@project-serum/serum/lib/token-instructions';
 import Jazzicon from 'jazzicon';
 import { CopyOutlined } from '@ant-design/icons';
 import bs58 from 'bs58';
@@ -20,7 +19,6 @@ import {
 } from '../../contexts/ConnectionContext';
 import { useWalletModal } from '../../contexts/WalletContext';
 import { useSolPrice } from '../../contexts/coingecko';
-import { useTokenList } from '../../contexts/tokenList';
 import { useNativeAccount } from '../../contexts/accounts';
 import { MetaplexModal } from "../../components/MetaplexModal";
 import {
@@ -124,26 +122,6 @@ export const Settings = ({
         {additionalSettings}
       </div>
     </>
-  );
-};
-
-export const TokenCircle = (props: { iconSize?: number , iconFile?: string, style?:React.CSSProperties}) => {
-  const { iconSize = 24 ,iconFile=undefined, style={}} = props;
-  const filePath = iconFile? iconFile:"/unknown_token.png"
-  return (
-    <span
-      style={{
-        background: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: '50%',
-        height: iconSize,
-        width: iconSize,
-        display: 'inline-flex',
-        overflow: 'hidden',
-        ...style
-      }}
-    >
-      <img src={filePath}/>
-    </span>
   );
 };
 
@@ -272,7 +250,6 @@ export const CurrentUserBadge = (props: {
   }
   const balance = (account?.lamports || 0) / LAMPORTS_PER_SOL;
   const balanceInUSD = balance * solPrice;
-  const solMintInfo = useTokenList().tokenMap.get(WRAPPED_SOL_MINT.toString());
   const iconStyle: React.CSSProperties = {
     display: 'flex',
     width: props.iconSize,
@@ -308,6 +285,7 @@ export const CurrentUserBadge = (props: {
               <div
                 style={{
                   width: 250,
+                  paddingLeft: '10px',
                 }}
               >
                 <h5
@@ -323,10 +301,6 @@ export const CurrentUserBadge = (props: {
                     marginBottom: 10,
                   }}
                 >
-                  <TokenCircle
-                    iconFile={solMintInfo ? solMintInfo.logoURI : ''}
-                  />
-                  &nbsp;
                   <span
                     style={{
                       fontWeight: 600,
@@ -353,16 +327,11 @@ export const CurrentUserBadge = (props: {
                 >
                   <Button
                     className="metaplex-button-default"
-                    onClick={() => setShowAddFundsModal(true)}
-                    style={btnStyle}
-                  >
-                    Add Funds
-                  </Button>
-                  &nbsp;&nbsp;
-                  <Button
-                    className="metaplex-button-default"
                     onClick={disconnect}
-                    style={btnStyle}
+                    style={{
+                      ...btnStyle,
+                      paddingLeft: 0,
+                    }}
                   >
                     Disconnect
                   </Button>
@@ -519,9 +488,6 @@ export const CurrentUserBadgeMobile = (props: {
       <div className="balance-container">
         <span className="balance-title">Balance</span>
         <span>
-          <span className="sol-img-wrapper">
-            <img src={solSvg} width="10" />
-          </span>{' '}
           {formatNumber.format(balance)}&nbsp;&nbsp; SOL{' '}
           <span
             style={{

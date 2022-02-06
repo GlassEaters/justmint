@@ -77,7 +77,6 @@ import {
   useConnection,
   useConnectionConfig,
 } from '../contexts/ConnectionContext';
-import { useSolPrice } from '../contexts/coingecko';
 import {
   notify,
   shortenAddress,
@@ -515,7 +514,6 @@ export const UploadView: React.FC = (
   const connection = useConnection();
   const { endpoint } = useConnectionConfig();
   const wallet = useWallet();
-  const solPrice = useSolPrice();
 
   // user inputs
   // Array<RcFile>
@@ -1196,7 +1194,7 @@ export const UploadView: React.FC = (
                 {
                   validator: (_: any, value: string) => {
                     try {
-                      const key = new PublicKey(value);
+                      new PublicKey(value);
                       return Promise.resolve();
                     } catch (err) {
                       return Promise.reject(new Error(`Invalid creator pubkey ${value}`));
