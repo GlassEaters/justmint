@@ -1297,7 +1297,6 @@ export const UploadView: React.FC = (
             id="fund-bundlr-field"
             value={fundBundlrAmount}
             onChange={(value) => setFundBundlrAmount(value)}
-            placeholder={`Max ${MAX_NAME_LENGTH} characters`}
             autoFocus
             style={{
               width: '100%',
@@ -1314,7 +1313,7 @@ export const UploadView: React.FC = (
           />
         </label>
         <Button
-          className="connector"
+          className="fund-modal-btn"
           onClick={() => {
             const wrap = async () => {
               setLoading(incLoading);
