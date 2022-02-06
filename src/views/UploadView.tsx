@@ -9,6 +9,7 @@ import {
   Row,
   Statistic,
   Table,
+  Tabs,
   Tooltip,
   Typography,
   Upload,
@@ -530,6 +531,7 @@ export const UploadView: React.FC = (
   const [creators, setCreators] = useLocalStorageState('creators', []);
   const [showAddFundsModal, setShowAddFundsModal] = React.useState(false);
   const [fundBundlrAmount, setFundBundlrAmount] = React.useState(0);
+  const [recoverBundlrTxId, setRecoverBundlrTxId] = React.useState('');
 
   // derived + async useEffect
   const requiredCreators = wallet.publicKey ? [
@@ -755,6 +757,10 @@ export const UploadView: React.FC = (
 
     await connection.confirmTransaction(txId, 'finalized');
 
+    await postFunding(txId);
+  };
+
+  const postFunding = async (txId: TransactionSignature) => {
     const res = await bundlr.utils.api.post(
         `/account/balance/${bundlr.utils.currency}`, { tx_id: txId });
 
@@ -1015,7 +1021,7 @@ export const UploadView: React.FC = (
               id="fund-bundlr"
               onClick={() => setShowAddFundsModal(true)}
             >
-              Fund
+              Manage
             </Button>
           </div>
         )}
@@ -1279,11 +1285,14 @@ export const UploadView: React.FC = (
       <MetaplexModal
         visible={showAddFundsModal}
         onCancel={() => setShowAddFundsModal(false)}
-        title="Fund Bundlr"
+        title="Manage Bundlr Wallet"
         bodyStyle={{
           alignItems: 'start',
         }}
       >
+        <Tabs defaultActiveKey="1" style={{ width: '100%' }}>
+
+        <Tabs.TabPane tab="Fund" key="1">
         <label
           className="action-field"
           style={{
@@ -1331,6 +1340,57 @@ export const UploadView: React.FC = (
         >
           Fund
         </Button>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane tab="Recover" key="2">
+        <label
+          className="action-field"
+          style={{
+            width: '100%',
+            marginBottom: 0,
+          }}
+        >
+          <span className="field-title">
+            Recover Transaction {"\u00A0"}
+          </span>
+          <Input
+            className="modal-input-field"
+            value={recoverBundlrTxId}
+            onChange={(e) => setRecoverBundlrTxId(e.target.value)}
+            placeholder={"Transaction signature"}
+          />
+        </label>
+        <p style={{ color: 'white', marginBottom: '10px' }}>
+          Recover a funding payment that failed due to network issues.
+        </p>
+        <Button
+          className="fund-modal-btn"
+          onClick={() => {
+            const wrap = async () => {
+              setLoading(incLoading);
+              try {
+                await postFunding(recoverBundlrTxId);
+              } catch (err) {
+                console.log(err);
+                notify({
+                  message: `Failed to recover bundlr transaction`,
+                  description: err.message,
+                })
+              }
+              setLoading(decLoading);
+            }
+            wrap();
+            setShowAddFundsModal(false);
+          }}
+          style={{
+            width: '100%',
+          }}
+        >
+          Fund
+        </Button>
+        </Tabs.TabPane>
+
+        </Tabs>
       </MetaplexModal>
     </div>
   );
