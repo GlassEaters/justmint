@@ -591,7 +591,7 @@ export const UploadView: React.FC = (
           " ".repeat(50), // fluff
         )).length,
         dummyAreaveManifestByteSize,
-      ];
+      ].map(l => Math.ceil(l * 4 / 3)); // base64 encoded
       const price = (await Promise.all(lengths.map(
         l => bundlr.utils.getPrice('solana', l)
       ))).reduce((c, d) => c.plus(d), new BigNumber(0));
