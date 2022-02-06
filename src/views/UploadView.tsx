@@ -1097,13 +1097,13 @@ export const UploadView: React.FC = (
               dataIndex: 'trait_type',
               width: '30%',
               editable: true,
-              placeholder: 'dog',
+              placeholder: 'position',
             },
             {
               title: 'Value',
               dataIndex: 'value',
               editable: true,
-              placeholder: 'samo',
+              placeholder: 'bullish',
             },
           ]}
         />
