@@ -1295,22 +1295,9 @@ export const UploadView: React.FC = (
             Add SOL {"\u00A0"}
           </span>
           <InputNumber
-            id="fund-bundlr-field"
+            className="modal-input-field"
             value={fundBundlrAmount}
             onChange={(value) => setFundBundlrAmount(value)}
-            autoFocus
-            style={{
-              width: '100%',
-              background: '#242424',
-              borderRadius: 12,
-              marginBottom: 10,
-              height: 50,
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 10px',
-              justifyContent: 'space-between',
-              fontWeight: 700,
-            }}
           />
         </label>
         <p style={{ color: 'white', marginBottom: '10px' }}>

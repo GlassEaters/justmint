@@ -404,7 +404,7 @@ p {
 
 
   .anticon {
-    color: #61892F;
+    color: #8458B3;
   }
 
   > textarea {
@@ -453,13 +453,25 @@ p {
     padding-bottom: 0;
     height: 22px;
     border: none;
-    background-color: #373B3F !important;
+    background-color: @table-bg-color !important;
     border-radius: 48px;
-    color: #86C232;
+    color: @primary-color;
     margin-left: 10px;
     padding-left: 10px;
     padding-right: 10px;
   }
+}
+
+.modal-input-field {
+  width: 100%;
+  background: #242424;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  justify-content: space-between;
 }
 
 .fullAspectRatio > img {
