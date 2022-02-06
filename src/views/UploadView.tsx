@@ -975,20 +975,25 @@ export const UploadView: React.FC = (
         className="app stack"
         style={{ textAlign: 'center' }}
       >
-        <div>
+        <div
+          style={{
+            position: 'absolute',
+            // ~golden ratio?
+            top: '38%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
         {wallet.connected ? (
           <Button
             className="connector"
             onClick={onConnect}
-            style={{ height: '48px' }}
           >
-            Connect to Bundlr
+            Just Mint
           </Button>
         ) : (
-          <ConnectButton
-            style={{ height: '48px' }}
-          >
-            Connect to Bundlr
+          <ConnectButton>
+            Just Mint
           </ConnectButton>
         )}
         </div>

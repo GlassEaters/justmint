@@ -298,19 +298,20 @@ p {
 .connector {
   color: #121212;
   border-color: #121212;
-  background: white !important;
+  background: @primary-color !important;
   box-shadow: 0 0 24px rgba(26, 26, 26, 0.12);
   border-radius: 8px;
-  padding: 12px 20px;
-  font-family: "SF Pro Text";
-  font-style: normal;
-  font-weight: 600;
+  padding: 24px 40px;
+  span {
+    font-family: 'Montserrat' !important;
+    font-size: 24px;
+  }
   height: fit-content;
 
   &:hover, &:focus {
     background: transparent !important;
-    border-color: #FFFFFF;
-    color: #FFFFFF;
+    border-color: @primary-color;
+    color: @primary-color;
   }
 }
 
