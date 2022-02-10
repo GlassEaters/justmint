@@ -532,13 +532,15 @@ export const UploadView: React.FC = (
   const [recoverBundlrTxId, setRecoverBundlrTxId] = React.useState('');
 
   // derived + async useEffect
+  const [requiredCreatorShare, setRequiredCreatorShare] = useLocalStorageState('requiredCreatorShare', '100');
   const requiredCreators = wallet.publicKey ? [
     {
       creator: wallet.publicKey.toBase58(),
-      share: '100',
+      share: requiredCreatorShare,
       key: 0,
     }
   ] : [];
+  const isRequiredCreator = (r: any) => r.creator === wallet.publicKey.toBase58();
   const allCreators = [...requiredCreators, ...creators];
   const assetList = [...coverAsset, ...additionalAssets];
   const [balance, setBalance] = React.useState<BigNumber | null>(null);
@@ -1189,8 +1191,12 @@ export const UploadView: React.FC = (
         <EditableTable
           data={allCreators}
           setData={(cs: any[]) => {
-            const nonfixed = cs.filter((r: any) => r.creator !== wallet.publicKey.toBase58());
-            setCreators(nonfixed)
+            const fixed = cs.find(isRequiredCreator);
+            const nonfixed = cs.filter(r => !isRequiredCreator(r));
+            if (fixed.share !== requiredCreatorShare) {
+              setRequiredCreatorShare(fixed.share);
+            }
+            setCreators(nonfixed);
           }}
           defaults={{ creator: '', share: '', key: 0 }}
           addTitle={`Add a creator`}
