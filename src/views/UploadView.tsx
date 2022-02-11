@@ -8,6 +8,7 @@ import {
   List,
   Row,
   Statistic,
+  Switch,
   Table,
   Tabs,
   Tooltip,
@@ -406,7 +407,7 @@ export const mintNFTInstructions = async (
   connection: Connection,
   walletKey: PublicKey,
   metadataData: MetadataDataData,
-  maxSupply: BN,
+  maxSupply: BN | null,
 ): Promise<{ mint: Keypair, instructions: Array<TransactionInstruction> }> => {
   // Retrieve metadata
 
@@ -527,6 +528,8 @@ export const UploadView: React.FC = (
   const [externalUrl, setExternalUrl] = useLocalStorageState('externalUrl', '');
   const [sellerFeeBasisPoints, setSellerFeeBasisPoints] = useLocalStorageState('sellerFeeBasisPoints', 0);
   const [creators, setCreators] = useLocalStorageState('creators', []);
+  const [hasMaxEditions, setHasMaxEditions] = useLocalStorageState('hasMaxEditions', true);
+  const [maxEditions, setMaxEditions] = useLocalStorageState('maxEditions', 0);
   const [showAddFundsModal, setShowAddFundsModal] = React.useState(false);
   const [fundBundlrAmount, setFundBundlrAmount] = React.useState(0);
   const [recoverBundlrTxId, setRecoverBundlrTxId] = React.useState('');
@@ -781,6 +784,10 @@ export const UploadView: React.FC = (
   };
 
   const bundlrUpload = async () => {
+    if (hasMaxEditions && isNaN(Number(maxEditions))) {
+      throw new Error(`Maximum editions must be specified if limited`);
+    }
+    const maxSupply = hasMaxEditions ? new BN(Number(maxEditions)) : null;
     if (assetList.length === 0) {
       throw new Error('Must upload at least 1 asset');
     }
@@ -922,7 +929,7 @@ export const UploadView: React.FC = (
           })
         }),
       }),
-      new BN(0),
+      maxSupply,
     );
 
     const result = await sendTransactionWithRetry(
@@ -1164,7 +1171,7 @@ export const UploadView: React.FC = (
 
       <CollapsePanel
         id="royalties-creators"
-        panelName="Royalties & Creators"
+        panelName="Royalties, Prints, and Creators"
       >
       <label className="action-field">
         <span className="field-title">
@@ -1179,6 +1186,33 @@ export const UploadView: React.FC = (
           onChange={(value) => setSellerFeeBasisPoints(value * 100)}
           style={{ borderRadius: '8px' }}
         />
+      </label>
+
+      <label className="action-field">
+        <span className="field-title">
+          Maximum Print Editions {"\u00A0"}
+          <Tooltip title={"The number of print editions that can be made. Toggle to remove the cap!"}>
+            <QuestionCircleOutlined />
+          </Tooltip>
+        </span>
+        <div>
+        <InputNumber
+          className="top-level-input"
+          disabled={!hasMaxEditions}
+          defaultValue={0}
+          onChange={(value) => setMaxEditions(value)}
+          style={{ borderRadius: '8px' }}
+        />
+        <Switch
+          checked={hasMaxEditions}
+          onChange={(checked) => setHasMaxEditions(checked)}
+          checkedChildren="Limited"
+          unCheckedChildren="Unlimited"
+          style={{
+            marginLeft: 12,
+          }}
+        />
+        </div>
       </label>
 
       <label className="action-field">
