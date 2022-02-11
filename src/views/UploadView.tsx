@@ -867,6 +867,30 @@ export const UploadView: React.FC = (
       } else {
         name = 'arweave-manifest';
       };
+      const arweaveUrl = `https://arweave.net/${dataItem.id}`;
+      const viewC = (
+        <a
+          href={arweaveUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: '#7448A3',
+          }}
+        >
+          View on arweave
+        </a>
+      );
+      const existing = await fetch(arweaveUrl, {method: 'HEAD'});
+      if (existing.ok) {
+        notify({
+          message: `Already uploaded ${name} to arweave`,
+          description: viewC,
+        });
+        uploaded.push({
+          arweave: dataItem.id,
+          name: name,
+        });
+      } else {
       try {
         const res = await bundlr.uploader.dataItemUploader(
           // TODO: fix the dependency mismatch requiring any...
@@ -874,17 +898,12 @@ export const UploadView: React.FC = (
         if (res.status !== 200 && res.status != 201) {
           throw new Error(`Bad status code ${res.status}`);
         }
+        if (res.data.id !== dataItem.id) {
+          throw new Error(`Uploaded ID does not match expected`);
+        }
         notify({
-          message: `Uploaded ${name} to bundlr network`,
-          description: (
-            <a
-              href={`https://arweave.net/${res.data.id}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View on arweave
-            </a>
-          ),
+          message: `Uploaded ${name} to arweave`,
+          description: viewC,
         })
         uploaded.push({
           arweave: res.data.id,
@@ -900,6 +919,7 @@ export const UploadView: React.FC = (
           arweave: null,
           name: name,
         });
+      }
       }
 
       setUploaded(uploaded);
