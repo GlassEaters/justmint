@@ -9,6 +9,7 @@ import { SPLTokenListProvider } from '../contexts/tokenList';
 import { WalletProvider } from '../contexts/WalletContext';
 import { AppLayout } from './Layout';
 
+import { SignView } from '../views/SignView';
 import { UploadView } from '../views/UploadView';
 
 export const App = () => {
@@ -21,6 +22,7 @@ export const App = () => {
       <WalletProvider>
         <AppLayout>
           <Switch>
+            <Route exact path="/sign" component={SignView} />
             <Route exact path="/" component={UploadView} />
           </Switch>
         </AppLayout>
