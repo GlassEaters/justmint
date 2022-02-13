@@ -828,30 +828,30 @@ export const UploadView: React.FC = (
       </Col>
 
       <Col span={12}>
+      <Tooltip
+        placement="topLeft"
+        title={(
+          <div>
+            Fund your Bundlr wallet here to pay for arweave uploads!
+          </div>
+        )}
+      >
       <Statistic
         title={(
           <div>
             Bundlr Balance
-            <Tooltip
-              defaultVisible={true}
-              title={(
-                <div>
-                  Fund your Bundlr wallet here to pay for arweave uploads!
-                </div>
-              )}
-            >
             <Button
               id="fund-bundlr"
               onClick={() => setShowAddFundsModal(true)}
             >
               Manage
             </Button>
-            </Tooltip>
           </div>
         )}
         value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'}
         suffix={price ? 'SOL' : ''}
       />
+      </Tooltip>
       </Col>
       </Row>
 
