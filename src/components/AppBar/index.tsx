@@ -89,6 +89,20 @@ export const MetaplexMenu = () => {
                       setIsModalVisible(false);
                     }}
                   />
+                  <div className="wallet-wrapper">
+                    <Button className="wallet-key">
+                      <Link to="/">
+                        {homeSvg(location.pathname === "/")}
+                      </Link>
+                    </Button>
+                  </div>
+                  <div className="wallet-wrapper">
+                    <Button className="wallet-key">
+                      <Link to="/sign">
+                        {penSvg(location.pathname === "/sign")}
+                      </Link>
+                    </Button>
+                  </div>
                   <Cog />
                 </>
               )}
