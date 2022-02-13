@@ -72,8 +72,9 @@ export const MetaplexMenu = () => {
                 <div className="actions-buttons">
                   <ConnectButton
                     onClick={() => setIsModalVisible(false)}
-                    className="secondary-btn"
-                  />
+                  >
+                    Connect Wallet
+                  </ConnectButton>
                   {/*<HowToBuyModal
                     onClick={() => setIsModalVisible(false)}
                     buttonClassName="black-btn"
@@ -90,14 +91,20 @@ export const MetaplexMenu = () => {
                     }}
                   />
                   <div className="wallet-wrapper">
-                    <Button className="wallet-key">
+                    <Button
+                      className="wallet-key"
+                      onClick={() => setIsModalVisible(false)}
+                    >
                       <Link to="/">
                         {homeSvg(location.pathname === "/")}
                       </Link>
                     </Button>
                   </div>
                   <div className="wallet-wrapper">
-                    <Button className="wallet-key">
+                    <Button
+                      className="wallet-key"
+                      onClick={() => setIsModalVisible(false)}
+                    >
                       <Link to="/sign">
                         {penSvg(location.pathname === "/sign")}
                       </Link>
