@@ -176,9 +176,11 @@ export const AppBar = () => {
           <LogoLink />
         </div>
         <div className="app-right">
-          {/*!connected && (
-            <HowToBuyModal buttonClassName="modal-button-default" />
-          )*/}
+          {!connected && location.pathname !== "/" && (
+            <ConnectButton style={{ padding: '21px 20px' }}>
+              Connect Wallet
+            </ConnectButton>
+          )}
           {connected && (
             <>
               <CurrentUserBadge
