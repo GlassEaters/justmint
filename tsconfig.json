@@ -11,6 +11,11 @@
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "node",
-    "typeRoots": ["types", "../../types", "../../node_modules/@types"]
+    "typeRoots": ["types", "../../types", "../../node_modules/@types"],
+    "paths": {
+      "@bundlr-network/client/*": [
+        "./node_modules/@bundlr-network/client/build/*"
+      ]
+    }
   }
 }

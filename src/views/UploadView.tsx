@@ -44,8 +44,8 @@ import {
   MAX_NAME_LENGTH,
 } from '@metaplex-foundation/mpl-token-metadata';
 
-import WebBundlr from '@bundlr-network/client/build/web';
-import SolanaConfig from '@bundlr-network/client/build/web/currencies/solana';
+import { WebBundlr } from '@bundlr-network/client/web';
+import SolanaConfig from '@bundlr-network/client/web/currencies/solana';
 import SolanaSigner from 'arbundles/src/signing/chains/SolanaSigner';
 import { createData } from 'arbundles/src/ar-data-create';
 
