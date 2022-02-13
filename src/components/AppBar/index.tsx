@@ -51,7 +51,7 @@ export const MetaplexMenu = () => {
   const [isModalVisible, setIsModalVisible] = React.useState<boolean>(false);
   const { connected } = useWallet();
 
-  if (width < 768)
+  if (width <= 768)
     return (
       <>
         <Modal

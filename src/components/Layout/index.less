@@ -17,7 +17,7 @@
   display: flex;
   width: 100%;
   justify-content: space-between;
-  @media (max-width: @screen-sm-min) {
+  @media (max-width: 768px) {
     display: none;
   }
 }
@@ -30,6 +30,13 @@ section.ant-layout {
 
   #width-layout {
     max-width: 1440px;
+  }
+}
+
+.ant-layout-content {
+  overflow: auto !important;
+  @media (max-width: 768px) {
+    padding: 0 12px !important;
   }
 }
 
@@ -81,7 +88,7 @@ section#main-layout.ant-layout {
 }
 
 .ant-tabs-mobile {
-  @media (max-width: @screen-sm-min) {
+  @media (max-width: 768px) {
     padding: 20px;
   }
 }
