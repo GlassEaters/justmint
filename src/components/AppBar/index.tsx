@@ -138,7 +138,7 @@ export const MobileNavbar = () => {
 
 const homeSvg = (filled: boolean) => {
   const props = filled
-    ? { fill: 'white' }
+    ? { fill: '#d0bdf4' }
     : {
       fill: 'none',
       stroke: 'white',
@@ -154,7 +154,7 @@ const homeSvg = (filled: boolean) => {
 
 const penSvg = (filled: boolean) => {
   const props = filled
-    ? { fill: 'white' }
+    ? { fill: '#d0bdf4' }
     : {
       fill: 'none',
       stroke: 'white',
