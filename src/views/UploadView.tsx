@@ -778,7 +778,7 @@ export const UploadView: React.FC = (
     }
   }, [wallet]);
 
-  if (!bundlr) {
+  if (!bundlr || !wallet.connected) {
     return (
       <div
         className="app stack"
