@@ -625,7 +625,7 @@ export const UploadView: React.FC = (
       arweavePathManifestDataItem,
     ];
 
-    const price = (await Promise.all(dataItems.map(
+    const price: BigNumber = (await Promise.all(dataItems.map(
       d => bundlr.utils.getPrice('solana', d.data.length)
     ))).reduce((c, d) => c.plus(d), new BigNumber(0));
     notify({
@@ -633,7 +633,20 @@ export const UploadView: React.FC = (
     });
 
     if (balance.lt(price)) {
-      throw new Error('Please fund your bundlr wallet first!');
+      let diff = price.minus(balance);
+      notify({
+        message: `Funding ${diff.div(LAMPORTS_PER_SOL).toString()} SOL to the Bundlr`,
+      });
+      try {
+        const amount = new BigNumber(diff);
+        await fundBundlr(amount);
+      } catch (err) {
+        console.log(err);
+        notify({
+          message: `Failed to fund bundlr wallet`,
+          description: err.message,
+        })
+      }
     }
 
     const uploaded: Array<UploadMeta | null> = [];
@@ -826,34 +839,8 @@ export const UploadView: React.FC = (
         suffix={price ? 'SOL' : ''}
       />
       </Col>
-
-      <Col span={12}>
-      <Tooltip
-        placement="topLeft"
-        title={(
-          <div>
-            Fund your Bundlr wallet here to pay for arweave uploads!
-          </div>
-        )}
-      >
-      <Statistic
-        title={(
-          <div>
-            Bundlr Balance
-            <Button
-              id="fund-bundlr"
-              onClick={() => setShowAddFundsModal(true)}
-            >
-              Manage
-            </Button>
-          </div>
-        )}
-        value={balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'}
-        suffix={price ? 'SOL' : ''}
-      />
-      </Tooltip>
-      </Col>
       </Row>
+
 
       <label className="action-field">
         <span className="field-title">Name</span>
@@ -889,7 +876,32 @@ export const UploadView: React.FC = (
         </Button>
       </Upload>
       </div>
+      <CollapsePanel
+          id="upload-funds"
+          panelName="Manage Upload Funds"
+      >
+        <label className="action-field">
+        <span className="field-title">
+        <Tooltip
+            placement="topLeft"
+            title={(
+                <div>
+                  Fund your Bundlr wallet here to pay for arweave uploads!
+                </div>
+            )}
+        >
+          Bundlr Balance: {balance ? balance.div(LAMPORTS_PER_SOL).toString() : 'Connecting...'}
+          <Button
+              id="fund-bundlr"
+              onClick={() => setShowAddFundsModal(true)}
+          >
+            Manage
+          </Button>
+          </Tooltip>
+        </span>
+        </label>
 
+      </CollapsePanel>
       <CollapsePanel
         id="additional-options"
         panelName="Additional Options"
