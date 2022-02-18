@@ -199,16 +199,14 @@ type CostBreakdown = {
 export const getMintCost = async (
   connection: Connection,
 ): Promise<CostBreakdown> => {
-  if (!_mintCost.loaded) {
-    _mintCost = Object.assign(_mintCost, {
-      mint: await connection.getMinimumBalanceForRentExemption(MintLayout.span),
-      metadata: await connection.getMinimumBalanceForRentExemption(
-        679 + 282 + AccountLayout.span,
-      ),
-      loaded: true,
-    });
-  }
-  return Promise.resolve(_mintCost);
+  return {
+    ..._mintCost,
+    mint: await connection.getMinimumBalanceForRentExemption(MintLayout.span),
+    metadata: await connection.getMinimumBalanceForRentExemption(
+      679 + 282 + AccountLayout.span,
+    ),
+    loaded: true,
+  };
 };
 export const mintNFTInstructions = async (
   walletKey: PublicKey,
@@ -410,7 +408,7 @@ export const UploadView: React.FC = () => {
     getMintCost(connection).then((cost) => {
       setMintPrice(cost);
     });
-  });
+  }, [connection]);
   const getPrice = async () => {
     if (!bundlr) return;
     try {
