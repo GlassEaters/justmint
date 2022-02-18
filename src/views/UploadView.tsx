@@ -940,6 +940,7 @@ export const UploadView: React.FC = () => {
           id="description-field"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          style={{ height: '32px' }} // default. same as Input
           // autoSize
         />
       </label>
@@ -983,6 +984,7 @@ export const UploadView: React.FC = () => {
             }}
           />
         </div>
+        <div style={{ height: '3px' }} />
         <div>
           <span>Support The Creators: {DONATION / LAMPORTS_PER_SOL} SOL</span>
           <Switch
