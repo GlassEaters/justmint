@@ -80,5 +80,9 @@
     "webpack-cli": "^4.9.1",
     "webpack-dev-server": "^4.6.0",
     "webpack-merge": "^5.8.0"
+  },
+  "dependencies": {
+    "@sentry/react": "^6.17.9",
+    "@sentry/tracing": "^6.17.9"
   }
 }

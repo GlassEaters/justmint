@@ -1,24 +1,30 @@
-import React from 'react';
+import React from "react";
 
 export type LoadingContextState = {
-  loading: number,
-  setLoading: React.Dispatch<React.SetStateAction<number>>,
-}
+  loading: number;
+  setLoading: React.Dispatch<React.SetStateAction<number>>;
+  msg: string;
+  setMsg: React.Dispatch<React.SetStateAction<string>>;
+};
 
-export const LoadingContext = React.createContext<LoadingContextState | null>(null);
-
+export const LoadingContext = React.createContext<LoadingContextState | null>(
+  null,
+);
 export const LoaderProvider: React.FC = ({ children }) => {
   const [loading, setLoading] = React.useState(0);
+  const [msg, setMsg] = React.useState("loading");
   return (
     <LoadingContext.Provider
       value={{
         loading,
         setLoading,
+        msg,
+        setMsg,
       }}
     >
-      <div className={`loader-container ${loading ? 'active' : ''}`}>
+      <div className={`loader-container ${loading ? "active" : ""}`}>
         <div className="loader-block">
-          <div className="loader-title">loading</div>
+          <div className="loader-title">{msg}</div>
           <Spinner />
         </div>
       </div>
