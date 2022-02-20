@@ -40,7 +40,7 @@ export type Endpoint = {
 export const ENDPOINTS: Array<Endpoint> = [
   {
     name: "mainnet-beta",
-    url: "https://api.metaplex.solana.com",
+    url: "https://ssc-dao.genesysgo.net/",
     chainId: ChainId.MainnetBeta,
   },
   {
