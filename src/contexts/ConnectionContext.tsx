@@ -16,7 +16,7 @@ import {
 import { WalletNotConnectedError } from "@solana/wallet-adapter-base";
 
 import { WalletSigner } from "./WalletContext";
-import { useQuerySearch } from '../hooks/useQuerySearch';
+import { useQuerySearch } from "../hooks/useQuerySearch";
 import { envFor, sendSignedTransaction } from "../utils/transactions";
 import { shortenAddress, useLocalStorageState } from "../utils/common";
 
@@ -25,11 +25,7 @@ interface BlockhashAndFeeCalculator {
   feeCalculator: FeeCalculator;
 }
 
-export type ENDPOINT_NAME =
-  | 'mainnet-beta'
-  | 'testnet'
-  | 'devnet'
-  | 'localnet';
+export type ENDPOINT_NAME = "mainnet-beta" | "testnet" | "devnet" | "localnet";
 
 export type Endpoint = {
   name: ENDPOINT_NAME;
@@ -60,7 +56,10 @@ interface ConnectionConfig {
 }
 
 const ConnectionContext = React.createContext<ConnectionConfig>({
-  connection: new Connection(DEFAULT_ENDPOINT.url, 'recent'),
+  connection: new Connection(DEFAULT_ENDPOINT.url, {
+    commitment: "finalized",
+    confirmTransactionInitialTimeout: 60 * 1000,
+  }),
   endpoint: DEFAULT_ENDPOINT,
   tokens: new Map(),
 });
@@ -68,19 +67,21 @@ const ConnectionContext = React.createContext<ConnectionConfig>({
 export function ConnectionProvider({ children }: { children: any }) {
   const searchParams = useQuerySearch();
   const [networkStorage, setNetworkStorage] =
-    useLocalStorageState<ENDPOINT_NAME>('network', DEFAULT_ENDPOINT.name);
-  const networkParam = searchParams.get('network');
+    useLocalStorageState<ENDPOINT_NAME>("network", DEFAULT_ENDPOINT.name);
+  const networkParam = searchParams.get("network");
 
   let maybeEndpoint;
   if (networkParam) {
-    let endpointParam = ENDPOINTS.find(({ name }) => name === networkParam);
+    const endpointParam = ENDPOINTS.find(({ name }) => name === networkParam);
     if (endpointParam) {
       maybeEndpoint = endpointParam;
     }
   }
 
   if (networkStorage && !maybeEndpoint) {
-    let endpointStorage = ENDPOINTS.find(({ name }) => name === networkStorage);
+    const endpointStorage = ENDPOINTS.find(
+      ({ name }) => name === networkStorage,
+    );
     if (endpointStorage) {
       maybeEndpoint = endpointStorage;
     }
@@ -94,13 +95,13 @@ export function ConnectionProvider({ children }: { children: any }) {
 
   useEffect(() => {
     function fetchTokens() {
-      return new TokenListProvider().resolve().then(container => {
+      return new TokenListProvider().resolve().then((container) => {
         const list = container
-          .excludeByTag('nft')
+          .excludeByTag("nft")
           .filterByChainId(endpoint.chainId)
           .getList();
 
-        const map = new Map(list.map(item => [item.address, item]));
+        const map = new Map(list.map((item) => [item.address, item]));
         setTokens(map);
       });
     }
@@ -157,7 +158,7 @@ export function ConnectionProvider({ children }: { children: any }) {
 export function useConnection() {
   const context = useContext(ConnectionContext);
   if (!context) {
-    throw new Error('ConnectionContext must be used with a ConnectionProvider');
+    throw new Error("ConnectionContext must be used with a ConnectionProvider");
   }
   return context.connection as Connection;
 }
@@ -165,7 +166,7 @@ export function useConnection() {
 export function useConnectionConfig() {
   const context = useContext(ConnectionContext);
   if (!context) {
-    throw new Error('ConnectionContext must be used with a ConnectionProvider');
+    throw new Error("ConnectionContext must be used with a ConnectionProvider");
   }
   return {
     endpoint: context.endpoint,
@@ -174,19 +175,21 @@ export function useConnectionConfig() {
 }
 
 export const explorerLinkCForAddress = (
-  key : string,
+  key: string,
   connection: Connection,
-  shorten: boolean = true,
+  shorten = true,
 ) => {
   return (
     <a
-      href={`https://explorer.solana.com/address/${key}?cluster=${envFor(connection)}`}
+      href={`https://explorer.solana.com/address/${key}?cluster=${envFor(
+        connection,
+      )}`}
       target="_blank"
       rel="noreferrer"
       title={key}
       style={{
-        fontFamily: 'Monospace',
-        color: '#7448A3',
+        fontFamily: "Monospace",
+        color: "#7448A3",
       }}
     >
       {shorten ? shortenAddress(key) : key}
@@ -196,7 +199,7 @@ export const explorerLinkCForAddress = (
 
 export const getErrorForTransaction = async (
   connection: Connection,
-  txid: string
+  txid: string,
 ) => {
   // wait for all confirmation before geting transaction
   await connection.confirmTransaction(txid, "max");
@@ -236,10 +239,10 @@ export const sendTransactionWithRetry = async (
   instructions: TransactionInstruction[],
   signers: Keypair[],
   commitment: Commitment = "singleGossip",
-  includesFeePayer: boolean = false,
+  includesFeePayer = false,
   block?: BlockhashAndFeeCalculator,
-  beforeSend?: () => void
-) : Promise<string| { txid: string; slot: number }> => {
+  beforeSend?: () => void,
+): Promise<string | { txid: string; slot: number }> => {
   if (!wallet.publicKey) throw new WalletNotConnectedError();
 
   let transaction = new Transaction();
@@ -254,7 +257,7 @@ export const sendTransactionWithRetry = async (
     transaction.setSigners(
       // fee payed by the wallet owner
       wallet.publicKey,
-      ...signers.map((s) => s.publicKey)
+      ...signers.map((s) => s.publicKey),
     );
   }
 
@@ -285,4 +288,3 @@ export const sendTransactionWithRetry = async (
     return "See console logs";
   }
 };
-
