@@ -343,6 +343,7 @@ export const UploadView: React.FC = () => {
   );
   const [maxEditions, setMaxEditions] = useLocalStorageState("maxEditions", 0);
   const [showAddFundsModal, setShowAddFundsModal] = React.useState(false);
+  const [showSuccessModal, setShowSuccessModal] = React.useState(false);
   const [fundBundlrAmount, setFundBundlrAmount] = React.useState(0);
   const [recoverBundlrTxId, setRecoverBundlrTxId] = React.useState("");
 
@@ -373,6 +374,7 @@ export const UploadView: React.FC = () => {
   const [price, setPrice] = React.useState<BigNumber | null>(null);
   const [mintPrice, setMintPrice] = React.useState<CostBreakdown>(_mintCost);
   const [uploaded, setUploaded] = React.useState<Array<UploadMeta | null>>([]);
+  const [mint, setMint] = React.useState<Metadata | null>(null);
 
   const [signerStr, setSigner] = useLocalStorageState("bundlrSigner", "");
   const [bundlr, setBundlr] = React.useState<WebBundlr | null>(null);
@@ -835,6 +837,10 @@ export const UploadView: React.FC = () => {
         ),
       });
       await connection.confirmTransaction(result.txid, "finalized");
+      setMint(
+        await Metadata.load(connection, await Metadata.getPDA(mint.publicKey)),
+      );
+      setShowSuccessModal(true);
     }
   };
 
@@ -1257,7 +1263,7 @@ export const UploadView: React.FC = () => {
               } catch (err) {
                 console.log(err);
                 notify({
-                  message: `Bundlr upload failed`,
+                  message: `Minting failed, please try again.`,
                   description: err.message,
                 });
               }
@@ -1298,7 +1304,25 @@ export const UploadView: React.FC = () => {
           )}
         />
       )}
-
+      <MetaplexModal
+        visible={showSuccessModal}
+        onCancel={() => setShowSuccessModal(false)}
+        title="Success"
+        bodyStyle={{
+          alignItems: "start",
+          padding: "24px 48px 48px 48px",
+        }}
+      >
+        <h3>Congratulations</h3>
+        {mint && (
+          <p>
+            Your NFT has been minted, check it out here:
+            <a href={`https://www.solaneyes.com/address/${mint.data.mint}`}>
+              SolanEyes
+            </a>
+          </p>
+        )}
+      </MetaplexModal>
       <MetaplexModal
         visible={showAddFundsModal}
         onCancel={() => setShowAddFundsModal(false)}
