@@ -42,7 +42,7 @@ import {
   Metadata,
 } from "@metaplex-foundation/mpl-token-metadata";
 
-import { WebBundlr } from "@bundlr-network/client/web";
+import { WebBundlr } from "@bundlr-network/client";
 import SolanaConfig from "@bundlr-network/client/web/currencies/solana";
 import SolanaSigner from "arbundles/src/signing/chains/SolanaSigner";
 import { createData } from "arbundles/src/ar-data-create";
@@ -160,12 +160,15 @@ function createArweavePathManifest(
   return arweavePathManifest;
 }
 
-function donationAddress(donationConfig: DonationConfig) {
+function donationAddress(donationConfig: DonationConfig): PublicKey[] {
+  const addr = [];
   if (donationConfig.creators) {
-    return new PublicKey("GheJkHWyNsSPLUT77Y6YSeb8RkXmYx8SGEFZjixnw2Eq");
-  } else {
-    return new PublicKey("9dbXZYx5JxwCtbA9LnqFySfgtaV514JTxt9hwEjCDKYU");
+    addr.push(new PublicKey("GheJkHWyNsSPLUT77Y6YSeb8RkXmYx8SGEFZjixnw2Eq"));
   }
+  if (donationConfig.charity) {
+    addr.push(new PublicKey("9dbXZYx5JxwCtbA9LnqFySfgtaV514JTxt9hwEjCDKYU"));
+  }
+  return addr;
 }
 
 // The size in bytes of a dummy Arweave Path Manifest.
@@ -213,7 +216,7 @@ export const mintNFTInstructions = async (
   metadataData: DataV2,
   maxSupply: BN | null,
   cost: number,
-  donationAddress: PublicKey,
+  donationAddress: PublicKey[],
 ): Promise<{ mint: Keypair; instructions: Array<TransactionInstruction> }> => {
   // Retrieve metadata
   // Generate a mint
@@ -237,11 +240,13 @@ export const mintNFTInstructions = async (
       walletKey,
       walletKey,
     ),
-    SystemProgram.transfer({
-      fromPubkey: walletKey,
-      toPubkey: donationAddress,
-      lamports: DONATION,
-    }),
+    ...donationAddress.map((a) =>
+      SystemProgram.transfer({
+        fromPubkey: walletKey,
+        toPubkey: a,
+        lamports: DONATION,
+      }),
+    ),
   );
 
   const userTokenAccoutAddress = await Token.getAssociatedTokenAddress(
@@ -982,7 +987,10 @@ export const UploadView: React.FC = () => {
           <Switch
             checked={donationConfig.charity}
             onChange={(checked) =>
-              setDonationConfig({ charity: checked, creators: !checked })
+              setDonationConfig({
+                charity: checked,
+                creators: donationConfig.creators,
+              })
             }
             checkedChildren="Charity"
             unCheckedChildren="Charity  "
@@ -997,7 +1005,10 @@ export const UploadView: React.FC = () => {
           <Switch
             checked={donationConfig.creators}
             onChange={(checked) =>
-              setDonationConfig({ charity: !checked, creators: checked })
+              setDonationConfig({
+                charity: donationConfig.charity,
+                creators: checked,
+              })
             }
             checkedChildren="Creators"
             unCheckedChildren="Creators"
@@ -1008,7 +1019,10 @@ export const UploadView: React.FC = () => {
         </div>
       </div>
 
-      <CollapsePanel id="upload-funds-bundlr" panelName="Upload Funds">
+      <CollapsePanel
+        id="upload-funds-bundlr"
+        panelName="Upload Funds(Advanced)"
+      >
         <label className="action-field">
           <span className="field-title">
             Bundlr Balance:{" "}
