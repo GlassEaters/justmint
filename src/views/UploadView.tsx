@@ -540,7 +540,7 @@ export const UploadView: React.FC = () => {
 
     const { blockhash: recentBlockhash, feeCalculator } =
       await connection.getRecentBlockhash();
-    {
+    if (!amount.isEqualTo(0)) {
       const transaction = new Transaction({
         recentBlockhash,
         feePayer: wallet.publicKey,
@@ -567,8 +567,10 @@ export const UploadView: React.FC = () => {
 
     let txId: TransactionSignature;
     {
-      const { blockhash: recentBlockhash } =
-        await connection.getRecentBlockhash();
+      const [{ blockhash: recentBlockhash }, signerBalance] = await Promise.all([
+        connection.getRecentBlockhash(),
+        connection.getBalance(signer.publicKey),
+      ]);
       const transaction = new Transaction({
         recentBlockhash,
         feePayer: signer.publicKey,
@@ -579,7 +581,7 @@ export const UploadView: React.FC = () => {
         SystemProgram.transfer({
           fromPubkey: signer.publicKey,
           toPubkey: new PublicKey(to),
-          lamports: +new BigNumber(amount).toNumber(),
+          lamports: signerBalance,
         }),
       );
 
