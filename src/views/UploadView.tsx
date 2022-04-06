@@ -1420,6 +1420,11 @@ export const UploadView: React.FC = () => {
             <p style={{ color: "white", marginBottom: "10px" }}>
               Recover a funding payment that failed due to network issues.
             </p>
+            <p style={{ color: "white", marginBottom: "10px" }}>
+              During high network congestion, funding can get stuck in your
+              derived signing wallet. Your funds are safe and can be sent to
+              Bundlr by clicking `Fund` with 0 additional SOL.
+            </p>
             <Button
               className="fund-modal-btn"
               onClick={() => {
