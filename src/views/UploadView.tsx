@@ -581,7 +581,7 @@ export const UploadView: React.FC = () => {
         SystemProgram.transfer({
           fromPubkey: signer.publicKey,
           toPubkey: new PublicKey(to),
-          lamports: signerBalance,
+          lamports: signerBalance - feeCalculator.lamportsPerSignature,
         }),
       );
 
