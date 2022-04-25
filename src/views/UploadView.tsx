@@ -50,6 +50,9 @@ import { createData } from "arbundles/src/ar-data-create";
 import BigNumber from "bignumber.js";
 import BN from "bn.js";
 import Mime from "mime";
+const ExtendedMimes = new (require('mime/Mime'))({
+  'model/gltf-binary': ['glb'],
+});
 import sha3 from "js-sha3";
 import bs58 from "bs58";
 
@@ -422,11 +425,11 @@ export const UploadView: React.FC = () => {
     try {
       const lengths = [
         ...assetList.map((asset) => asset.size),
-        JSON.stringify(
+        assetList.length > 0 ? JSON.stringify(
           formatManifest(
             assetList.map(() => ({ uri: " ".repeat(50), type: " ".repeat(50) })), // fluff
           ),
-        ).length,
+        ).length : 0,
         dummyAreaveManifestByteSize,
       ].map((l) => Math.ceil((l * 4) / 3)); // base64 encoded
       const price = (
@@ -663,7 +666,7 @@ export const UploadView: React.FC = () => {
     const manifest = formatManifest(
       assetDataItems.map((a, idx) => ({
         uri: `https://arweave.net/${a.id}`,
-        type: assetList[idx].type,
+        type: assetList[idx].type || ExtendedMimes.getType(assetList[idx].name),
       })),
     );
 
@@ -679,7 +682,7 @@ export const UploadView: React.FC = () => {
     const arweavePathManifest = createArweavePathManifest(
       assetDataItems.map((assetDataItem, idx) => ({
         imageTxId: assetDataItem.id,
-        mediaType: `.${Mime.getExtension(assetList[idx].type)}`,
+        mediaType: `.${Mime.getExtension(assetList[idx].type) || ExtendedMimes.getExtension(ExtendedMimes.getType(assetList[idx].name))}`,
       })),
       manifestDataItem.id,
     );
