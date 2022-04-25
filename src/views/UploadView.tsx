@@ -384,16 +384,17 @@ export const UploadView: React.FC = () => {
   const [signerStr, setSigner] = useLocalStorageState("bundlrSigner", "");
   const [bundlr, setBundlr] = React.useState<WebBundlr | null>(null);
 
-  const formatManifest = (assetLinks: Array<string>, category: string) => {
+  const formatManifest = (assetLinks: Array<{ uri: string, type: string }>) => {
     return {
       name,
       description,
-      image: assetLinks[0],
+      image: assetLinks[0].uri,
       external_url: externalUrl,
       attributes,
       properties: {
         files: assetLinks.slice(),
-        category,
+        // no specification on docs.metaplex.com...
+        category: Mime.getExtension(assetLinks[0].type),
       },
     };
   };
@@ -423,8 +424,7 @@ export const UploadView: React.FC = () => {
         ...assetList.map((asset) => asset.size),
         JSON.stringify(
           formatManifest(
-            assetList.map(() => " ".repeat(50)), // fluff
-            " ".repeat(50), // fluff
+            assetList.map(() => ({ uri: " ".repeat(50), type: " ".repeat(50) })), // fluff
           ),
         ).length,
         dummyAreaveManifestByteSize,
@@ -661,8 +661,10 @@ export const UploadView: React.FC = () => {
     }
 
     const manifest = formatManifest(
-      assetDataItems.map((a) => `https://arweave.net/${a.id}`),
-      Mime.getType(assetList[0].type),
+      assetDataItems.map((a, idx) => ({
+        uri: `https://arweave.net/${a.id}`,
+        type: assetList[idx].type,
+      })),
     );
 
     const manifestDataItem = createData(
