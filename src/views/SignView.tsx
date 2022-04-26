@@ -31,6 +31,7 @@ import {
 } from '../contexts/ConnectionContext';
 import {
   notify,
+  TryMonospacedPublicKey,
 } from '../utils/common';
 import {
   explorerLinkFor,
@@ -150,6 +151,7 @@ export const SignView = (
             dataIndex: 'mint',
             editable: true,
             placeholder: TOKEN_PROGRAM_ID.toBase58(),
+            render: (p: string) => <TryMonospacedPublicKey value={p} />,
             rules: [
               {
                 validator: (_: any, value: string) => {

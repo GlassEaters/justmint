@@ -68,7 +68,12 @@ import {
   useConnection,
   useConnectionConfig,
 } from "../contexts/ConnectionContext";
-import { notify, shortenAddress, useLocalStorageState } from "../utils/common";
+import {
+  notify,
+  shortenAddress,
+  useLocalStorageState,
+  TryMonospacedPublicKey,
+} from "../utils/common";
 import { SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID } from "../utils/ids";
 import { explorerLinkFor } from "../utils/transactions";
 const DONATION = 5000000;
@@ -1224,6 +1229,7 @@ export const UploadView: React.FC = () => {
                   if (!wallet.publicKey) return true;
                   return record.creator !== wallet.publicKey.toBase58();
                 },
+                render: (p: string) => <TryMonospacedPublicKey value={p} />,
                 placeholder: TOKEN_PROGRAM_ID.toBase58(),
                 rules: [
                   {

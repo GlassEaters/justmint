@@ -1,5 +1,6 @@
 import React from 'react';
 import { notification } from 'antd';
+import { PublicKey } from '@solana/web3.js';
 // import Link from '../components/Link';
 
 type UseStorageReturnValue = {
@@ -140,3 +141,18 @@ export function chunks<T>(array: T[], size: number): T[][] {
   ).map((_: T, index: number) => array.slice(index * size, (index + 1) * size));
 }
 
+export const TryMonospacedPublicKey = ({ value }: { value: string }) => {
+  try {
+    return <MonospacedPublicKey address={new PublicKey(value)} />;
+  } catch {
+    return <>value</>;
+  }
+}
+
+export const MonospacedPublicKey = ({ address }: { address: PublicKey }) => {
+  return (
+    <span style={{ fontFamily: 'monospace' }}>
+      {address.toBase58()}
+    </span>
+  );
+}
